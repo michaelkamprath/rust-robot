@@ -46,15 +46,21 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
     println!("Interrupts enabled");
 
-    robot.reset_left_wheel_counter();
+    robot.reset_wheel_counters();
     let mut led_blink_time = millis();
     loop {
         if robot.button_pressed() {
             led.set_high();
             let start_time = millis();
+            led_blink_time = start_time;
             robot.forward();
             while millis() - start_time < 1000 {
                 robot.handle_loop();
+                
+                if millis() - led_blink_time > 50 {
+                    led_blink_time = millis();
+                    led.toggle();
+                }
             }
             robot.stop();
             led.set_low();

@@ -37,6 +37,8 @@ fn INT2() {
     });
 }
 
+/// This is the main hardware abstractions for the robot. It is repsponsible for setting up 
+/// and providing access to the robot's hardware.
 pub struct Robot {
     motors: MotorController<
         Pin<mode::Output, PG5>,
@@ -108,24 +110,34 @@ impl Robot {
         self.motors.stop();
     }
 
+    /// Resets the wheel counters to 0
+    pub fn reset_wheel_counters(&mut self) {
+        self.reset_left_wheel_counter();
+        self.reset_right_wheel_counter();
+    }
+
+    /// Resets the left wheel counters to 0
     pub fn reset_left_wheel_counter(&mut self) {
         interrupt::free(|cs| {
             LEFT_WHEEL_COUNTER.borrow(cs).set(0);
         });
     }
 
+    /// Resets the right wheel counters to 0
     pub fn reset_right_wheel_counter(&mut self) {
         interrupt::free(|cs| {
             RIGHT_WHEEL_COUNTER.borrow(cs).set(0);
         });
     }
 
+    /// Returns the number of wheel ticks on the left wheel since the last reset
     pub fn get_left_wheel_counter(&self) -> u32 {
         let mut counter: u32 = 0;
         interrupt::free(|cs| counter = LEFT_WHEEL_COUNTER.borrow(cs).get());
         counter
     }
 
+    /// Returns the number of wheel ticks on the right wheel since the last reset
     pub fn get_right_wheel_counter(&self) -> u32 {
         let mut counter: u32 = 0;
         interrupt::free(|cs| counter = RIGHT_WHEEL_COUNTER.borrow(cs).get());
