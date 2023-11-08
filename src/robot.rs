@@ -1,9 +1,9 @@
 use crate::{
     l298n::{motor_controller::MotorController, motor_enable_pins::MotorEnablePin},
-    println, serial_print,
+    println,
 };
 use arduino_hal::{
-    hal::port::{PE3, PE4, PE5, PG5, PH3, PH4},
+    hal::port::{PA4, PE3, PE4, PE5, PG5, PH3, PH4},
     port::{
         mode::{self, Floating, Input},
         Pin,
@@ -46,18 +46,21 @@ pub struct Robot {
         MotorEnablePin<PH3>,
         MotorEnablePin<PH4>,
     >,
+    button: Pin<Input<Floating>, PA4>,
+    button_pressed: bool,
 }
 
 #[allow(dead_code)]
 impl Robot {
     pub fn new(
         timer: &mut Timer4Pwm,
-        ina1: Pin<Input<Floating>, PG5>,
-        ina2: Pin<Input<Floating>, PE3>,
-        inb1: Pin<Input<Floating>, PE4>,
-        inb2: Pin<Input<Floating>, PE5>,
-        ena: Pin<Input<Floating>, PH3>,
-        enb: Pin<Input<Floating>, PH4>,
+        ina1_pin: Pin<Input<Floating>, PG5>,
+        ina2_pin: Pin<Input<Floating>, PE3>,
+        inb1_pin: Pin<Input<Floating>, PE4>,
+        inb2_pin: Pin<Input<Floating>, PE5>,
+        ena_pin: Pin<Input<Floating>, PH3>,
+        enb_pin: Pin<Input<Floating>, PH4>,
+        button_pin: Pin<Input<Floating>, PA4>,
         eicra: &Reg<eicra::EICRA_SPEC>,
         eimsk: &Reg<eimsk::EIMSK_SPEC>,
     ) -> Self {
@@ -65,22 +68,34 @@ impl Robot {
         eicra.modify(|_, w| w.isc2().val_0x03());
         eicra.modify(|_, w| w.isc3().val_0x03());
         eimsk.modify(|r, w| {
-            let cur_bits: u8 = r.bits();
-            let new_bits = cur_bits | 0b00001100; // INT2 and INT3
-            println!("current bits: {}, new bits {}", cur_bits, new_bits);
+            let new_bits = r.bits() | 0b00001100; // INT2 and INT3
             w.bits(new_bits)
         });
+        println!("   wheel counter interrupts set up");
+        // set up button
+        let button = button_pin.into_floating_input();
+        println!("   button set up");
 
         // create self structure
         Self {
             motors: MotorController::new(
-                ina1.into_output(),
-                ina2.into_output(),
-                inb1.into_output(),
-                inb2.into_output(),
-                MotorEnablePin::new(ena.into_output().into_pwm(timer)),
-                MotorEnablePin::new(enb.into_output().into_pwm(timer)),
+                ina1_pin.into_output(),
+                ina2_pin.into_output(),
+                inb1_pin.into_output(),
+                inb2_pin.into_output(),
+                MotorEnablePin::new(ena_pin.into_output().into_pwm(timer)),
+                MotorEnablePin::new(enb_pin.into_output().into_pwm(timer)),
             ),
+            button,
+            button_pressed: false,
+        }
+    }
+
+    /// This function is called in the main loop to allow the robot to handle state updates
+    pub fn handle_loop(&mut self) {
+        // unset button press if button is not pressed
+        if self.button.is_high() {
+            self.button_pressed = false;
         }
     }
 
@@ -115,5 +130,20 @@ impl Robot {
         let mut counter: u32 = 0;
         interrupt::free(|cs| counter = RIGHT_WHEEL_COUNTER.borrow(cs).get());
         counter
+    }
+
+    /// returns true if the button is newly pressed
+    pub fn button_pressed(&mut self) -> bool {
+        // the button is active low
+        if self.button.is_low() {
+            if !self.button_pressed {
+                println!("robot button pressed");
+                self.button_pressed = true;
+                return true;
+            }
+        } else {
+            self.button_pressed = false;
+        }
+        false
     }
 }
