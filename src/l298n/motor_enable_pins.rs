@@ -12,8 +12,7 @@ impl<PIN> MotorEnablePin<PIN> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH3> 
-{
+impl PwmPin for MotorEnablePin<PH3> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -33,13 +32,11 @@ impl PwmPin for MotorEnablePin<PH3>
     }
 
     fn set_duty(&mut self, duty: Self::Duty) {
-
         self.0.set_duty(duty);
     }
 }
 
-impl PwmPin for MotorEnablePin<PH4> 
-{
+impl PwmPin for MotorEnablePin<PH4> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -59,13 +56,11 @@ impl PwmPin for MotorEnablePin<PH4>
     }
 
     fn set_duty(&mut self, duty: Self::Duty) {
-
         self.0.set_duty(duty);
     }
 }
 
-impl PwmPin for MotorEnablePin<PH5> 
-{
+impl PwmPin for MotorEnablePin<PH5> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -85,7 +80,6 @@ impl PwmPin for MotorEnablePin<PH5>
     }
 
     fn set_duty(&mut self, duty: Self::Duty) {
-
         self.0.set_duty(duty);
     }
 }

@@ -17,16 +17,16 @@ where
     INA2: OutputPin,
     INB1: OutputPin,
     INB2: OutputPin,
-    ENA: PwmPin,  
+    ENA: PwmPin,
     ENB: PwmPin,
 {
     pub fn new(ina1: INA1, ina2: INA2, inb1: INB1, inb2: INB2, ena: ENA, enb: ENB) -> Self
-    where 
+    where
         INA1: OutputPin,
         INA2: OutputPin,
         INB1: OutputPin,
         INB2: OutputPin,
-        ENA: PwmPin,  
+        ENA: PwmPin,
         ENB: PwmPin,
     {
         Self {
@@ -39,7 +39,6 @@ where
         }
     }
 
-    
     pub fn set_duty(&mut self, duty_a: ENA::Duty, duty_b: ENB::Duty) {
         self.ena.set_duty(duty_a);
         self.enb.set_duty(duty_b);
@@ -102,7 +101,6 @@ where
         self.ina2.set_low().ok();
         self.inb1.set_low().ok();
         self.inb2.set_low().ok();
-
     }
 
     pub fn stop_a(&mut self) {

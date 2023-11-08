@@ -6,20 +6,17 @@ mod l298n;
 mod robot;
 mod serial_print;
 
-use arduino_hal::simple_pwm::{Timer4Pwm, Prescaler};
+use arduino_hal::simple_pwm::{Prescaler, Timer4Pwm};
 use panic_halt as _;
 
-use arduino_hal::pac::Peripherals;
 use arduino_hal::delay_ms;
+use arduino_hal::pac::Peripherals;
 
 use robot::Robot;
 use serial_print::put_console;
 
-
 #[arduino_hal::entry]
 fn main() -> ! {
-    
-
     let dp: Peripherals = Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
 
@@ -53,7 +50,11 @@ fn main() -> ! {
             robot.forward();
         } else {
             robot.stop();
-            println!("Left wheel counter: {}, right wheel counter {}", robot.get_left_wheel_counter(), robot.get_right_wheel_counter());
+            println!(
+                "Left wheel counter: {}, right wheel counter {}",
+                robot.get_left_wheel_counter(),
+                robot.get_right_wheel_counter()
+            );
         }
         delay_ms(1000);
     }

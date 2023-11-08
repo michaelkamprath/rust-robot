@@ -24,7 +24,7 @@ The robot this code is designed to control is built with the following parts (so
 
 Furthermore, You might find the following useful:
 
-| Name | Amazon Link | Notes |
+| Name | Link | Notes |
 |:--|:--|:--|
 | Machine Screws, Bolts, Washers, and Nuts Kit | [Amazon](https://amzn.to/3Pi5QLR) | You will need some hardware to connect parts to the chassis. |
 | Brass Spacer Standoff Kit | [Amazon](https://amzn.to/3EDg58H) | Using standoffs to connect various items to the chassis makes construction easier. |
