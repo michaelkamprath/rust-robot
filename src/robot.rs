@@ -37,8 +37,8 @@ pub struct Robot <
     INA2: OutputPin,
     INB1: OutputPin,
     INB2: OutputPin,
-    ENA: PwmPin + PwmPin<Duty = u8>,
-    ENB: PwmPin + PwmPin<Duty = u8>,
+    ENA: PwmPin<Duty = u8>,
+    ENB: PwmPin<Duty = u8>,
     BUTT1: InputPin,
 >
 {
@@ -53,8 +53,8 @@ impl<
     INA2: OutputPin,
     INB1: OutputPin,
     INB2: OutputPin,
-    ENA: PwmPin + PwmPin<Duty = u8>,
-    ENB: PwmPin + PwmPin<Duty = u8>,
+    ENA: PwmPin<Duty = u8>,
+    ENB: PwmPin<Duty = u8>,
     BUTT1: InputPin,
 >
 Robot <INA1,INA2,INB1,INB2,ENA,ENB, BUTT1> {
