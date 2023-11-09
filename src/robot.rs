@@ -1,19 +1,12 @@
 use crate::{
-    l298n::{motor_controller::MotorController, motor_enable_pins::MotorEnablePin},
+    l298n::motor_controller::MotorController,
     println,
-};
-use arduino_hal::{
-    hal::port::{PA4, PE3, PE4, PE5, PG5, PH3, PH4},
-    port::{
-        mode::{self, Floating, Input},
-        Pin,
-    },
-    simple_pwm::{IntoPwmPin, Timer4Pwm},
 };
 use avr_device::atmega2560::exint::{eicra, eimsk};
 use avr_device::generic::Reg;
 use avr_device::interrupt;
 use avr_device::interrupt::Mutex;
+use embedded_hal::{digital::v2::{OutputPin, InputPin}, PwmPin};
 use core::cell::Cell;
 
 static LEFT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
@@ -37,32 +30,42 @@ fn INT2() {
     });
 }
 
-/// This is the main hardware abstractions for the robot. It is repsponsible for setting up 
+/// This is the main hardware abstractions for the robot. It is repsponsible for setting up
 /// and providing access to the robot's hardware.
-pub struct Robot {
-    motors: MotorController<
-        Pin<mode::Output, PG5>,
-        Pin<mode::Output, PE3>,
-        Pin<mode::Output, PE4>,
-        Pin<mode::Output, PE5>,
-        MotorEnablePin<PH3>,
-        MotorEnablePin<PH4>,
-    >,
-    button: Pin<Input<Floating>, PA4>,
+pub struct Robot <
+    INA1: OutputPin,
+    INA2: OutputPin,
+    INB1: OutputPin,
+    INB2: OutputPin,
+    ENA: PwmPin + PwmPin<Duty = u8>,
+    ENB: PwmPin + PwmPin<Duty = u8>,
+    BUTT1: InputPin,
+>
+{
+    motors: MotorController<INA1,INA2,INB1,INB2,ENA,ENB>,
+    button: BUTT1,
     button_pressed: bool,
 }
 
 #[allow(dead_code)]
-impl Robot {
+impl<
+    INA1: OutputPin,
+    INA2: OutputPin,
+    INB1: OutputPin,
+    INB2: OutputPin,
+    ENA: PwmPin + PwmPin<Duty = u8>,
+    ENB: PwmPin + PwmPin<Duty = u8>,
+    BUTT1: InputPin,
+>
+Robot <INA1,INA2,INB1,INB2,ENA,ENB, BUTT1> {
     pub fn new(
-        timer: &mut Timer4Pwm,
-        ina1_pin: Pin<Input<Floating>, PG5>,
-        ina2_pin: Pin<Input<Floating>, PE3>,
-        inb1_pin: Pin<Input<Floating>, PE4>,
-        inb2_pin: Pin<Input<Floating>, PE5>,
-        ena_pin: Pin<Input<Floating>, PH3>,
-        enb_pin: Pin<Input<Floating>, PH4>,
-        button_pin: Pin<Input<Floating>, PA4>,
+        ina1_pin: INA1,
+        ina2_pin: INA2,
+        inb1_pin: INB1,
+        inb2_pin: INB2,
+        ena_pin: ENA,
+        enb_pin: ENB,
+        button_pin: BUTT1,
         eicra: &Reg<eicra::EICRA_SPEC>,
         eimsk: &Reg<eimsk::EIMSK_SPEC>,
     ) -> Self {
@@ -74,21 +77,18 @@ impl Robot {
             w.bits(new_bits)
         });
         println!("   wheel counter interrupts set up");
-        // set up button
-        let button = button_pin.into_floating_input();
-        println!("   button set up");
 
         // create self structure
         Self {
             motors: MotorController::new(
-                ina1_pin.into_output(),
-                ina2_pin.into_output(),
-                inb1_pin.into_output(),
-                inb2_pin.into_output(),
-                MotorEnablePin::new(ena_pin.into_output().into_pwm(timer)),
-                MotorEnablePin::new(enb_pin.into_output().into_pwm(timer)),
+                ina1_pin,
+                ina2_pin,
+                inb1_pin,
+                inb2_pin,
+                ena_pin,
+                enb_pin,
             ),
-            button,
+            button: button_pin,
             button_pressed: false,
         }
     }
@@ -96,7 +96,7 @@ impl Robot {
     /// This function is called in the main loop to allow the robot to handle state updates
     pub fn handle_loop(&mut self) {
         // unset button press if button is not pressed
-        if self.button.is_high() {
+        if self.button.is_high().ok().unwrap() {
             self.button_pressed = false;
         }
     }
@@ -147,7 +147,7 @@ impl Robot {
     /// returns true if the button is newly pressed
     pub fn button_pressed(&mut self) -> bool {
         // the button is active low
-        if self.button.is_low() {
+        if self.button.is_low().ok().unwrap() {
             if !self.button_pressed {
                 println!("robot button pressed");
                 self.button_pressed = true;
