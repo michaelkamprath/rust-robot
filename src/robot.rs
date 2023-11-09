@@ -1,13 +1,13 @@
-use crate::{
-    l298n::motor_controller::MotorController,
-    println,
-};
+use crate::{l298n::motor_controller::MotorController, println};
 use avr_device::atmega2560::exint::{eicra, eimsk};
 use avr_device::generic::Reg;
 use avr_device::interrupt;
 use avr_device::interrupt::Mutex;
-use embedded_hal::{digital::v2::{OutputPin, InputPin}, PwmPin};
 use core::cell::Cell;
+use embedded_hal::{
+    digital::v2::{InputPin, OutputPin},
+    PwmPin,
+};
 
 static LEFT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
 static RIGHT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
@@ -32,7 +32,7 @@ fn INT2() {
 
 /// This is the main hardware abstractions for the robot. It is repsponsible for setting up
 /// and providing access to the robot's hardware.
-pub struct Robot <
+pub struct Robot<
     INA1: OutputPin,
     INA2: OutputPin,
     INB1: OutputPin,
@@ -40,24 +40,23 @@ pub struct Robot <
     ENA: PwmPin<Duty = u8>,
     ENB: PwmPin<Duty = u8>,
     BUTT1: InputPin,
->
-{
-    motors: MotorController<INA1,INA2,INB1,INB2,ENA,ENB>,
+> {
+    motors: MotorController<INA1, INA2, INB1, INB2, ENA, ENB>,
     button: BUTT1,
     button_pressed: bool,
 }
 
 #[allow(dead_code)]
 impl<
-    INA1: OutputPin,
-    INA2: OutputPin,
-    INB1: OutputPin,
-    INB2: OutputPin,
-    ENA: PwmPin<Duty = u8>,
-    ENB: PwmPin<Duty = u8>,
-    BUTT1: InputPin,
->
-Robot <INA1,INA2,INB1,INB2,ENA,ENB, BUTT1> {
+        INA1: OutputPin,
+        INA2: OutputPin,
+        INB1: OutputPin,
+        INB2: OutputPin,
+        ENA: PwmPin<Duty = u8>,
+        ENB: PwmPin<Duty = u8>,
+        BUTT1: InputPin,
+    > Robot<INA1, INA2, INB1, INB2, ENA, ENB, BUTT1>
+{
     pub fn new(
         ina1_pin: INA1,
         ina2_pin: INA2,
@@ -80,14 +79,7 @@ Robot <INA1,INA2,INB1,INB2,ENA,ENB, BUTT1> {
 
         // create self structure
         Self {
-            motors: MotorController::new(
-                ina1_pin,
-                ina2_pin,
-                inb1_pin,
-                inb2_pin,
-                ena_pin,
-                enb_pin,
-            ),
+            motors: MotorController::new(ina1_pin, ina2_pin, inb1_pin, inb2_pin, ena_pin, enb_pin),
             button: button_pin,
             button_pressed: false,
         }

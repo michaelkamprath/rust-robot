@@ -8,13 +8,13 @@ mod system;
 use panic_halt as _;
 
 use arduino_hal::{
-        hal::port::{PA4, PE3, PE4, PE5, PG5, PH3, PH4},
-        port::{
-            mode::{Floating, Input, Output},
-            Pin,
-        },
-        pac::Peripherals,
-        simple_pwm::{IntoPwmPin, Timer4Pwm, Prescaler},
+    hal::port::{PA4, PE3, PE4, PE5, PG5, PH3, PH4},
+    pac::Peripherals,
+    port::{
+        mode::{Floating, Input, Output},
+        Pin,
+    },
+    simple_pwm::{IntoPwmPin, Prescaler, Timer4Pwm},
 };
 
 use robot::Robot;
