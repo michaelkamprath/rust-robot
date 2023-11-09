@@ -80,7 +80,7 @@ impl<'a, T: Copy + Default + uDebug, const N: usize, const M: usize> uDisplay fo
         W: uWrite + ?Sized
     {
         for i in 0..M {
-            uwrite!(f, "{}", self.headers[i])?;
+            uwrite!(f, "\"{}\"", self.headers[i])?;
             if i < M - 1 {
                 uwrite!(f, ",")?;
             }
