@@ -1,4 +1,4 @@
-use crate::{l298n::motor_controller::MotorController, println};
+use crate::l298n::motor_controller::MotorController;
 use avr_device::atmega2560::exint::{eicra, eimsk};
 use avr_device::generic::Reg;
 use avr_device::interrupt;
@@ -75,7 +75,7 @@ impl<
             let new_bits = r.bits() | 0b00001100; // INT2 and INT3
             w.bits(new_bits)
         });
-        println!("   wheel counter interrupts set up");
+        // println!("   wheel counter interrupts set up");
 
         // create self structure
         Self {
@@ -141,7 +141,7 @@ impl<
         // the button is active low
         if self.button.is_low().ok().unwrap() {
             if !self.button_pressed {
-                println!("robot button pressed");
+                // println!("robot button pressed");
                 self.button_pressed = true;
                 return true;
             }

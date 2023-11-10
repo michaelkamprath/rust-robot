@@ -5,6 +5,8 @@
 mod l298n;
 mod robot;
 mod system;
+mod telemetry;
+
 use panic_halt as _;
 
 use arduino_hal::{
@@ -19,10 +21,11 @@ use arduino_hal::{
 
 use robot::Robot;
 use system::{
+    data_table::DataTable,
     millis::{millis, millis_init},
     serial_print::put_console,
-    data_table::DataTable,
 };
+use telemetry::ForwardMovementTelemetryRow;
 
 use crate::l298n::motor_enable_pins::MotorEnablePin;
 
@@ -34,6 +37,10 @@ fn main() -> ! {
     println!("Starting the Rust Robot! :D");
     millis_init(dp.TC0);
     println!("Millis initialized");
+
+    let fval = 3.14159_f32;
+    println!("fval: {}", fval);
+    println!("fval: {:?}", fval);
 
     let timer4: Timer4Pwm = Timer4Pwm::new(dp.TC4, Prescaler::Prescale64);
 
@@ -62,8 +69,8 @@ fn main() -> ! {
     unsafe { avr_device::interrupt::enable() };
     println!("Interrupts enabled");
 
-    let headers = ["millis","Left Wheel Counter", "Right Wheel Counter"];
-    let mut data_table = DataTable::<u32, 100, 3>::new(headers);
+    let headers = ["millis", "Left Wheel Counter", "Right Wheel Counter"];
+    let mut data_table = DataTable::<ForwardMovementTelemetryRow, 100, 3>::new(headers);
     println!("Data table initialized: {:?}", data_table);
 
     robot.reset_wheel_counters();
@@ -74,7 +81,13 @@ fn main() -> ! {
             let start_time = millis();
             led_blink_time = start_time;
             robot.reset_wheel_counters();
-            data_table.append([start_time, robot.get_left_wheel_counter(), robot.get_right_wheel_counter()]).ok();
+            data_table
+                .append(ForwardMovementTelemetryRow::new(
+                    start_time,
+                    robot.get_left_wheel_counter(),
+                    robot.get_right_wheel_counter(),
+                ))
+                .ok();
             robot.forward();
             while millis() - start_time < 1000 {
                 robot.handle_loop();
@@ -82,15 +95,19 @@ fn main() -> ! {
                 if millis() - led_blink_time > 50 {
                     led_blink_time = millis();
                     led.toggle();
-                    data_table.append([led_blink_time, robot.get_left_wheel_counter(), robot.get_right_wheel_counter()]).ok();
+                    data_table
+                        .append(ForwardMovementTelemetryRow::new(
+                            led_blink_time,
+                            robot.get_left_wheel_counter(),
+                            robot.get_right_wheel_counter(),
+                        ))
+                        .ok();
                 }
             }
             robot.stop();
             led.set_low();
             led_blink_time = millis();
-            println!(
-                "Wheel counter data collected:\n{}", data_table
-            );
+            println!("Wheel counter data collected:\n{}", data_table);
 
             data_table.erase();
         }

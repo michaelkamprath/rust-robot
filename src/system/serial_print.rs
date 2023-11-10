@@ -1,6 +1,8 @@
 // This code taken from the example code in the avr-hal crate, which is licensed under the MIT license:
 //      https://github.com/Rahix/avr-hal/blob/main/examples/arduino-uno/src/bin/uno-println.rs
 //
+use panic_halt as _;
+
 use avr_device::interrupt;
 use core::cell::RefCell;
 
