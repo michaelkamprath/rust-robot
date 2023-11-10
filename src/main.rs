@@ -44,8 +44,8 @@ fn main() -> ! {
         Pin<Output, PE3>,
         Pin<Output, PE4>,
         Pin<Output, PE5>,
-        MotorEnablePin<PH3>,
-        MotorEnablePin<PH4>,
+        MotorEnablePin<PH3,Timer4Pwm>,
+        MotorEnablePin<PH4,Timer4Pwm>,
         Pin<Input<Floating>, PA4>,
     > = Robot::new(
         pins.d4.into_output(),

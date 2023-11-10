@@ -5,14 +5,14 @@ use arduino_hal::simple_pwm::Timer4Pwm;
 use embedded_hal::PwmPin;
 
 /// This is just glue code so that we can use the abstract PwmPin trait in the l298n struct
-pub struct MotorEnablePin<PIN>(Pin<PwmOutput<Timer4Pwm>, PIN>);
-impl<PIN> MotorEnablePin<PIN> {
-    pub fn new(pin: Pin<PwmOutput<Timer4Pwm>, PIN>) -> Self {
+pub struct MotorEnablePin<PIN, TIMER>(Pin<PwmOutput<TIMER>, PIN>);
+impl<PIN, TIMER> MotorEnablePin<PIN, TIMER> {
+    pub fn new(pin: Pin<PwmOutput<TIMER>, PIN>) -> Self {
         Self(pin)
     }
 }
 
-impl PwmPin for MotorEnablePin<PH3> {
+impl PwmPin for MotorEnablePin<PH3,Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -36,7 +36,7 @@ impl PwmPin for MotorEnablePin<PH3> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH4> {
+impl PwmPin for MotorEnablePin<PH4,Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -60,7 +60,7 @@ impl PwmPin for MotorEnablePin<PH4> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH5> {
+impl PwmPin for MotorEnablePin<PH5,Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {
