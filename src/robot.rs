@@ -1,4 +1,12 @@
-use crate::l298n::motor_controller::MotorController;
+use crate::{
+    l298n::motor_controller::MotorController,
+    model::motor_calibration::get_lr_motor_power,
+    telemetry::{ForwardMovementTelemetryRow, FORWARD_MOVEMENT_TELEMETRY_HEADERS, FORWARD_TELEMETRY_COLUMN_COUNT},
+    system::{
+        data_table::DataTable,
+        millis::millis,
+    }, println,
+};
 use avr_device::atmega2560::exint::{eicra, eimsk};
 use avr_device::generic::Reg;
 use avr_device::interrupt;
@@ -8,6 +16,11 @@ use embedded_hal::{
     digital::v2::{InputPin, OutputPin},
     PwmPin,
 };
+
+
+const WHEEL_CIRCUMFERENCE: f32 = 214.0;     // millimeters
+const WHEEL_BASE: f32 = 132.5;              // millimeters
+const WHEEL_ENCODER_TICK_COUNT: u32 = 20;
 
 static LEFT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
 static RIGHT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
@@ -149,5 +162,60 @@ impl<
             self.button_pressed = false;
         }
         false
+    }
+
+    pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
+        println!("Robot::straight({})", distance_mm);
+        let (left_power, right_power) = get_lr_motor_power(100);
+        println!("left_power: {}, right_power: {}", left_power, right_power);
+
+        let mut data = DataTable::<ForwardMovementTelemetryRow, 100, FORWARD_TELEMETRY_COLUMN_COUNT>::new(FORWARD_MOVEMENT_TELEMETRY_HEADERS);
+
+        self.motors.set_duty(left_power, right_power);
+
+        let target_wheel_tick_count: u32 = 1+((WHEEL_ENCODER_TICK_COUNT*distance_mm) as f32 / WHEEL_CIRCUMFERENCE ) as u32;
+
+        self.reset_wheel_counters();
+        let mut last_checkin_time = millis();
+        self.forward();
+        data.append(ForwardMovementTelemetryRow::new(
+            last_checkin_time,
+            0,
+            0,
+            0.0,
+            target_wheel_tick_count,
+        )).ok();
+
+        while (self.get_left_wheel_counter()+self.get_right_wheel_counter())/2 < target_wheel_tick_count {
+            self.handle_loop();
+            if millis() - last_checkin_time > 100 {
+                last_checkin_time = millis();
+                let left_ticks = self.get_left_wheel_counter();
+                let right_ticks = self.get_right_wheel_counter();
+                let distance = ((left_ticks+right_ticks)/2) as f32 * WHEEL_CIRCUMFERENCE / WHEEL_ENCODER_TICK_COUNT as f32;
+                data.append(ForwardMovementTelemetryRow::new(
+                    last_checkin_time,
+                    left_ticks,
+                    right_ticks,
+                    distance,
+                    target_wheel_tick_count,
+                )).ok();
+            }
+        }
+        self.stop();
+        let left_ticks = self.get_left_wheel_counter();
+        let right_ticks = self.get_right_wheel_counter();
+        let distance = ((left_ticks+right_ticks)/2) as f32 * WHEEL_CIRCUMFERENCE / WHEEL_ENCODER_TICK_COUNT as f32;
+        data.append(ForwardMovementTelemetryRow::new(
+            millis(),
+            left_ticks,
+            right_ticks,
+            distance,
+            target_wheel_tick_count,
+        )).ok();
+
+        println!("Done with robot movement. Wheel counter data collected:\n{}", data);
+
+        self
     }
 }
