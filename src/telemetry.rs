@@ -1,6 +1,6 @@
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct ForwardMovementTelemetryRow {
     timestamp: u32,
     left_encoder: u32,
