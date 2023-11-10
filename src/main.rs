@@ -69,7 +69,7 @@ fn main() -> ! {
     loop {
         if robot.button_pressed() {
             led.set_high();
-            robot.straight(800);
+            robot.calibrate_motors();
             led.set_low();
             led_blink_time = millis();
         }

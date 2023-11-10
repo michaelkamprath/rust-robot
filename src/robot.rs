@@ -1,3 +1,6 @@
+use arduino_hal::delay_ms;
+use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
+
 use crate::{
     l298n::motor_controller::MotorController,
     model::motor_calibration::get_lr_motor_power,
@@ -106,15 +109,6 @@ impl<
         }
     }
 
-    pub fn forward(&mut self) {
-        self.motors.set_duty(75, 75);
-        self.motors.forward();
-    }
-
-    pub fn stop(&mut self) {
-        self.motors.stop();
-    }
-
     /// Resets the wheel counters to 0
     pub fn reset_wheel_counters(&mut self) {
         self.reset_left_wheel_counter();
@@ -177,7 +171,7 @@ impl<
 
         self.reset_wheel_counters();
         let mut last_checkin_time = millis();
-        self.forward();
+        self.motors.forward();
         data.append(ForwardMovementTelemetryRow::new(
             last_checkin_time,
             0,
@@ -202,7 +196,7 @@ impl<
                 )).ok();
             }
         }
-        self.stop();
+        self.motors.stop();
         let left_ticks = self.get_left_wheel_counter();
         let right_ticks = self.get_right_wheel_counter();
         let distance = ((left_ticks+right_ticks)/2) as f32 * WHEEL_CIRCUMFERENCE / WHEEL_ENCODER_TICK_COUNT as f32;
@@ -217,5 +211,86 @@ impl<
         println!("Done with robot movement. Wheel counter data collected:\n{}", data);
 
         self
+    }
+
+    pub fn calibrate_motors(&mut self) {
+        #[derive(Default, Copy, Clone)]
+        struct MotorCalibrationRow {
+            test_id: u16,
+            power: u8,
+            left_ticks: u32,
+            right_ticks: u32,
+            lr_ratio: f32,
+        }
+
+        impl uDebug for MotorCalibrationRow {
+            fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+            where
+                W: uWrite + ?Sized,
+            {
+                uwrite!(f, "MotorCalibrationRow {{ test_id: {}, power: {}, left_ticks: {}, right_ticks: {}, lr_ratio: {} }}", self.test_id, self.power, self.left_ticks, self.right_ticks, self.lr_ratio)
+            }
+        }
+
+        impl uDisplay for MotorCalibrationRow {
+            fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+            where
+                W: uWrite + ?Sized,
+            {
+                uwrite!(f, "{}, {}, {}, {}, {}", self.test_id, self.power, self.left_ticks, self.right_ticks, self.lr_ratio)
+            }
+        }
+
+        println!("Calibrating motors");
+
+        const COUNT_TEST_POWER_LEVELS: usize = 12;
+        const COUNT_TEST_RUNS: usize = 10;
+        const COUNT_TEST_DATA_ROWS: usize = COUNT_TEST_POWER_LEVELS*COUNT_TEST_RUNS;
+        let test_power_levels: [u8; COUNT_TEST_POWER_LEVELS] = [70, 80, 90, 100, 110, 120, 140, 160, 180, 200, 225, 255];
+
+        let mut data = DataTable::<MotorCalibrationRow, COUNT_TEST_DATA_ROWS, 5>::new([
+            "test_id",
+            "power",
+            "left_ticks",
+            "right_ticks",
+            "lr_ratio",
+        ]);
+
+        let mut test_id: u16 = 0;
+        for test_power in test_power_levels.iter() {
+            println!("testing power: {}", test_power);
+            for i in 0..COUNT_TEST_RUNS {
+                println!("    run #{}", i);
+                test_id += 1;
+                let left_power = *test_power;
+                let right_power = *test_power;
+                self.motors.set_duty(left_power, right_power);
+                self.reset_wheel_counters();
+                self.motors.forward();
+                while self.get_left_wheel_counter() < 100 {
+                    self.handle_loop();
+                }
+                self.motors.stop();
+                self.motors.set_duty(255, 255);
+                self.motors.reverse();
+                delay_ms(50);
+                self.motors.stop();
+                delay_ms(1000);
+                let left_ticks = self.get_left_wheel_counter();
+                let right_ticks = self.get_right_wheel_counter();
+                let lr_ratio = left_ticks as f32 / right_ticks as f32;
+                data.append(MotorCalibrationRow {
+                    test_id,
+                    power: *test_power,
+                    left_ticks,
+                    right_ticks,
+                    lr_ratio,
+                }).ok();
+
+                println!("        left_ticks: {}, right_ticks: {}, lr_ratio: {}", left_ticks, right_ticks, lr_ratio);
+            }
+        }
+
+        println!("Done with motor calibration. Data collected:\n{}", data);
     }
 }
