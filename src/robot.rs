@@ -279,13 +279,15 @@ impl<
                 let left_ticks = self.get_left_wheel_counter();
                 let right_ticks = self.get_right_wheel_counter();
                 let lr_ratio = left_ticks as f32 / right_ticks as f32;
-                data.append(MotorCalibrationRow {
+                if let Err(row) = data.append(MotorCalibrationRow {
                     test_id,
                     power: *test_power,
                     left_ticks,
                     right_ticks,
                     lr_ratio,
-                }).ok();
+                }) {
+                    println!("Error appending row to data table: {}", row);
+                }
 
                 println!("        left_ticks: {}, right_ticks: {}, lr_ratio: {}", left_ticks, right_ticks, lr_ratio);
             }

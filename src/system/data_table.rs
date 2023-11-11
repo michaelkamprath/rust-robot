@@ -24,21 +24,21 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
         }
     }
 
-    pub fn get(&self, index: usize) -> Option<&T> {
+    pub fn get(&self, index: usize) -> Result<&T,DataTableError> {
         if index < self.length {
-            Some(&self.data[index])
+            Ok(&self.data[index])
         } else {
-            None
+            Err(DataTableError::RowIndexOutOfBounds)
         }
     }
 
-    pub fn append(&mut self, row: T) -> Result<(), T> {
+    pub fn append(&mut self, row: T) -> Result<&T, DataTableError> {
         if self.length < N {
             self.data[self.length] = row;
             self.length += 1;
-            Ok(())
+            Ok(&self.data[self.length - 1])
         } else {
-            Err(row)
+            Err(DataTableError::CannotGrowTable)
         }
     }
 
@@ -95,5 +95,31 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize> 
             uwriteln!(f, "{}", self.data[i])?;
         }
         Ok(())
+    }
+}
+
+pub enum DataTableError {
+    RowIndexOutOfBounds,
+    CannotGrowTable,
+}
+
+impl uDebug for DataTableError {
+    fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        match self {
+            DataTableError::RowIndexOutOfBounds => uwrite!(f, "RowIndexOutOfBounds"),
+            DataTableError::CannotGrowTable => uwrite!(f, "CannotGrowTable"),
+        }
+    }
+}
+
+impl uDisplay for DataTableError {
+    fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        uDebug::fmt(self, f)
     }
 }
