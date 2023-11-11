@@ -14,7 +14,6 @@
  *     https://blog.rahix.de/005-avr-hal-millis/
  */
 use core::cell;
-use panic_halt as _;
 
 // Possible Values:
 //

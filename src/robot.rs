@@ -1,5 +1,6 @@
 use arduino_hal::delay_ms;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
+use avr_progmem::progmem_str as F;
 
 use crate::{
     l298n::motor_controller::MotorController,
@@ -159,7 +160,7 @@ impl<
     }
 
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
-        println!("Robot::straight({})", distance_mm);
+        println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
         let (left_power, right_power) = get_lr_motor_power(100);
         println!("left_power: {}, right_power: {}", left_power, right_power);
 
@@ -208,7 +209,7 @@ impl<
             target_wheel_tick_count,
         )).ok();
 
-        println!("Done with robot movement. Wheel counter data collected:\n{}", data);
+        println!("{}{}", F!("Done with robot movement. Wheel counter data collected:\n"), data);
 
         self
     }
@@ -241,7 +242,7 @@ impl<
             }
         }
 
-        println!("Calibrating motors");
+        println!("{}", F!("Calibrating motors"));
 
         const COUNT_TEST_POWER_LEVELS: usize = 12;
         const COUNT_TEST_RUNS: usize = 10;
@@ -258,7 +259,7 @@ impl<
 
         let mut test_id: u16 = 0;
         for test_power in test_power_levels.iter() {
-            println!("testing power: {}", test_power);
+            println!("{}{}", F!("testing power: "), test_power);
             for i in 0..COUNT_TEST_RUNS {
                 println!("    run #{}", i);
                 test_id += 1;
@@ -286,13 +287,13 @@ impl<
                     right_ticks,
                     lr_ratio,
                 }) {
-                    println!("Error appending row to data table: {}", row);
+                    println!("{}{}", F!("Error appending row to data table: "), row);
                 }
 
                 println!("        left_ticks: {}, right_ticks: {}, lr_ratio: {}", left_ticks, right_ticks, lr_ratio);
             }
         }
 
-        println!("Done with motor calibration. Data collected:\n{}", data);
+        println!("{}{}", F!("Done with motor calibration. Data collected:\n"), data);
     }
 }
