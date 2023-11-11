@@ -148,7 +148,7 @@ impl<
         // the button is active low
         if self.button.is_low().ok().unwrap() {
             if !self.button_pressed {
-                // println!("robot button pressed");
+                println!("robot button pressed");
                 self.button_pressed = true;
                 return true;
             }
