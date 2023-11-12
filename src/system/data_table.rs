@@ -1,6 +1,5 @@
 use ufmt;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, uwriteln, Formatter};
-use crate::{print, println};
 
 /// A two dimensional array with a fixed number columns and a maximum capacity of rows.
 /// N rows of M columns.
@@ -58,7 +57,13 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
         &self.headers
     }
 
-    pub fn plot(&self, value: fn(&T) -> i32) {
+    pub fn plot<W>(
+        &self,
+        value: fn(&T) -> i32,
+        f: &mut W,
+    ) where
+        W: uWrite + ?Sized,
+    {
         // first we need to scan through the data to find the range of
         // values that we need to plot
         let mut min = i32::MAX;
@@ -72,31 +77,72 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
                 max = value;
             }
         }
+        let min_digits = Self::count_digits(min);
+        let max_digits = Self::count_digits(max);
+        let digits = if min_digits > max_digits {
+            min_digits
+        } else {
+            max_digits
+        };
+
         // now we can calculate the scale factor
         let scale = 1.0 / (max - min) as f32;
-        const HEIGHT: i32 = 22;
+        const HEIGHT: i32 = 23;
         // now we can plot the data with rows on horizontal axis and values on vertical axis
-        println!("min: {}, max: {}\n", min, max);
         for h in (0..HEIGHT+1).rev() {
             if h == (HEIGHT as f32 * (0 - min) as f32 / (max - min) as f32) as i32 {
-                print!("0 |");
+                Self::write_n_spaces(digits-1, f);
+                uwrite!(f, "0 |").ok();
+            } else if h == HEIGHT {
+                Self::write_n_spaces(digits-max_digits, f);
+                uwrite!(f, "{} |", max).ok();
+            } else if h == 0 {
+                Self::write_n_spaces(digits-min_digits, f);
+                uwrite!(f, "{} |", min).ok();
             } else {
-                print!("  |");
+                Self::write_n_spaces(digits, f);
+                uwrite!(f, " |").ok();
             }
             for r in 0..self.length() {
                 if let Ok(row) = self.get(r) {
                     let value = value(row);
                     let scaled_value = ((value - min) as f32 * scale * HEIGHT as f32) as i32;
                     if scaled_value == h {
-                        print!("*");
+                        uwrite!(f, "*").ok();
                     } else if scaled_value > h {
-                        print!(".");
+                        uwrite!(f, ".").ok();
                     } else {
-                        print!(" ");
+                        uwrite!(f, " ").ok();
                     }
                 }
             }
-            println!("");
+            uwriteln!(f,"").ok();
+        }
+    }
+
+    fn count_digits(value: i32) -> u32 {
+        let mut n = value;
+        let mut count = 0;
+        if n < 0 {
+            n = -n;
+            count += 1; // for the '-' sign
+        }
+        loop {
+            count += 1;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        count
+    }
+
+    fn write_n_spaces<W>(n: u32,  f: &mut W)
+    where
+        W: uWrite + ?Sized,
+    {
+        for _ in 0..n {
+            uwrite!(f, " ").ok();
         }
     }
 }
