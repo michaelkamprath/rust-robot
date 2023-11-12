@@ -74,7 +74,7 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
         }
         // now we can calculate the scale factor
         let scale = 1.0 / (max - min) as f32;
-        const HEIGHT: i32 = 20;
+        const HEIGHT: i32 = 22;
         // now we can plot the data with rows on horizontal axis and values on vertical axis
         println!("min: {}, max: {}\n", min, max);
         for h in (0..HEIGHT+1).rev() {
@@ -83,15 +83,17 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
             } else {
                 print!("  |");
             }
-            for row in self.data.iter() {
-                let value = value(row);
-                let scaled_value = ((value - min) as f32 * scale * HEIGHT as f32) as i32;
-                if scaled_value == h {
-                    print!("*");
-                } else if scaled_value > h {
-                    print!(".");
-                } else {
-                    print!(" ");
+            for r in 0..self.length() {
+                if let Ok(row) = self.get(r) {
+                    let value = value(row);
+                    let scaled_value = ((value - min) as f32 * scale * HEIGHT as f32) as i32;
+                    if scaled_value == h {
+                        print!("*");
+                    } else if scaled_value > h {
+                        print!(".");
+                    } else {
+                        print!(" ");
+                    }
                 }
             }
             println!("");
