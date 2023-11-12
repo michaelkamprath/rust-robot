@@ -1,5 +1,6 @@
 use ufmt;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, uwriteln, Formatter};
+use crate::{print, println};
 
 /// A two dimensional array with a fixed number columns and a maximum capacity of rows.
 /// N rows of M columns.
@@ -55,6 +56,46 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
 
     pub fn headers(&self) -> &[&'a str; M] {
         &self.headers
+    }
+
+    pub fn plot(&self, value: fn(&T) -> i32) {
+        // first we need to scan through the data to find the range of
+        // values that we need to plot
+        let mut min = i32::MAX;
+        let mut max = i32::MIN;
+        for row in self.data.iter() {
+            let value = value(row);
+            if value < min {
+                min = value;
+            }
+            if value > max {
+                max = value;
+            }
+        }
+        // now we can calculate the scale factor
+        let scale = 1.0 / (max - min) as f32;
+        const HEIGHT: i32 = 20;
+        // now we can plot the data with rows on horizontal axis and values on vertical axis
+        println!("min: {}, max: {}\n", min, max);
+        for h in (0..HEIGHT+1).rev() {
+            if h == (HEIGHT as f32 * (0 - min) as f32 / (max - min) as f32) as i32 {
+                print!("0 |");
+            } else {
+                print!("  |");
+            }
+            for row in self.data.iter() {
+                let value = value(row);
+                let scaled_value = ((value - min) as f32 * scale * HEIGHT as f32) as i32;
+                if scaled_value == h {
+                    print!("*");
+                } else if scaled_value > h {
+                    print!(".");
+                } else {
+                    print!(" ");
+                }
+            }
+            println!("");
+        }
     }
 }
 

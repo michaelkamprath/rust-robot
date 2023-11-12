@@ -164,10 +164,11 @@ impl<
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
         println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
         let target_power: u8 = 125;
-        let mut controller = PIDController::new(7.5, 1.0, 2.0);
+        let mut controller = PIDController::new(2.5, 0.2, 0.1);
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
         controller.set_max_control_signal(40.0);
+        // heading is in radians
         let mut heading: f32 = 0.0;
 
         let mut data =
@@ -190,6 +191,7 @@ impl<
         let mut last_left_ticks = 0;
         let mut last_right_ticks = 0;
         let mut last_checkin_time = millis();
+        controller.reset(last_checkin_time);
         self.motors.forward();
         if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
             last_checkin_time,
@@ -200,6 +202,7 @@ impl<
             0.0,
             0.0,
             0.0,
+            controller.integral,
             self.motors.get_duty_a(),
             self.motors.get_duty_b(),
         )) {
@@ -227,7 +230,7 @@ impl<
                 heading += heading_change;
 
                 // get control signal from PID controller
-                let control_signal = controller.update(heading_change, last_checkin_time);
+                let control_signal = controller.update(heading, last_checkin_time);
 
                 // set motor power. positive control signal means turn left, a positive power means turn right
                 let adjustment = control_signal.abs() as u8;
@@ -239,7 +242,7 @@ impl<
                         .set_duty(target_power + adjustment, target_power - adjustment);
                 }
 
-                data.append(ForwardMovementTelemetryRow::new(
+                if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
                     current_time,
                     left_ticks,
                     right_ticks,
@@ -248,10 +251,12 @@ impl<
                     heading_change,
                     heading,
                     control_signal,
+                    controller.integral,
                     self.motors.get_duty_a(),
                     self.motors.get_duty_b(),
-                ))
-                .ok();
+                )) {
+                    println!("{}{}", F!("Error appending row to data table: "), error);
+                }
                 println!(
                     "updated robot control: delta heading = {}, control signal = {}, distance = {}",
                     heading_change, control_signal, distance,
@@ -282,6 +287,7 @@ impl<
             heading_change,
             heading,
             0.0,
+            controller.integral,
             self.motors.get_duty_a(),
             self.motors.get_duty_b(),
         ))
@@ -292,6 +298,9 @@ impl<
             F!("Done with robot movement. Wheel counter data collected:\n"),
             data
         );
+
+        println!("{}", F!("Plotting control signal"));
+        data.plot(|row| row.control_signal() as i32);
 
         self
     }
