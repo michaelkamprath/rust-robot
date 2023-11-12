@@ -10,12 +10,12 @@ mod telemetry;
 
 use panic_halt as _;
 
-use avr_progmem::progmem_str as F;
 use arduino_hal;
+use avr_progmem::progmem_str as F;
 
 use arduino_hal::{
-        pac::Peripherals,
-        simple_pwm::{IntoPwmPin, Prescaler, Timer4Pwm},
+    pac::Peripherals,
+    simple_pwm::{IntoPwmPin, Prescaler, Timer4Pwm},
 };
 
 use robot::Robot;
@@ -26,17 +26,15 @@ use system::{
 
 use crate::l298n::motor_enable_pins::MotorEnablePin;
 
-
 #[arduino_hal::entry]
 fn main() -> ! {
     let dp: Peripherals = Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 57600);
     put_console(serial);
-    println!("{}",F!("Starting the Rust Robot! :D"));
+    println!("{}", F!("Starting the Rust Robot! :D"));
     millis_init(dp.TC0);
-    println!("{}",F!("Millis initialized"));
-
+    println!("{}", F!("Millis initialized"));
 
     let timer4: Timer4Pwm = Timer4Pwm::new(dp.TC4, Prescaler::Prescale64);
 
@@ -45,25 +43,25 @@ fn main() -> ! {
         pins.d5.into_output(),
         pins.d2.into_output(),
         pins.d3.into_output(),
-        MotorEnablePin::new(pins.d6.into_output().into_pwm(&timer4)),
         MotorEnablePin::new(pins.d7.into_output().into_pwm(&timer4)),
+        MotorEnablePin::new(pins.d6.into_output().into_pwm(&timer4)),
         pins.d26.into_floating_input(),
         &dp.EXINT.eicra,
         &dp.EXINT.eimsk,
     );
-    println!("{}",F!("Robot initialized"));
+    println!("{}", F!("Robot initialized"));
     let mut led = pins.d13.into_output();
-    println!("{}",F!("LED initialized"));
+    println!("{}", F!("LED initialized"));
     unsafe { avr_device::interrupt::enable() };
-    println!("{}",F!("Interrupts enabled"));
+    println!("{}", F!("Interrupts enabled"));
 
     robot.reset_wheel_counters();
     let mut led_blink_time = millis();
     loop {
         if robot.button_pressed() {
-            println!("{}",F!("Button pressed, calibrating motors"));
+            println!("{}", F!("Button pressed, testing movement"));
             led.set_high();
-            robot.calibrate_motors();
+            robot.straight(2000);
             led.set_low();
             led_blink_time = millis();
         }

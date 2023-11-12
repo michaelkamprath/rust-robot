@@ -24,7 +24,7 @@ impl<'a, T: Copy + Default + uDebug + uDisplay, const N: usize, const M: usize>
         }
     }
 
-    pub fn get(&self, index: usize) -> Result<&T,DataTableError> {
+    pub fn get(&self, index: usize) -> Result<&T, DataTableError> {
         if index < self.length {
             Ok(&self.data[index])
         } else {

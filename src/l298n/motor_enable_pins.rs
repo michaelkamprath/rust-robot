@@ -12,7 +12,7 @@ impl<PIN, TIMER> MotorEnablePin<PIN, TIMER> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH3,Timer4Pwm> {
+impl PwmPin for MotorEnablePin<PH3, Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -36,7 +36,7 @@ impl PwmPin for MotorEnablePin<PH3,Timer4Pwm> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH4,Timer4Pwm> {
+impl PwmPin for MotorEnablePin<PH4, Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {
@@ -60,7 +60,7 @@ impl PwmPin for MotorEnablePin<PH4,Timer4Pwm> {
     }
 }
 
-impl PwmPin for MotorEnablePin<PH5,Timer4Pwm> {
+impl PwmPin for MotorEnablePin<PH5, Timer4Pwm> {
     type Duty = u8;
 
     fn disable(&mut self) {

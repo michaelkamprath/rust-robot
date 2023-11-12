@@ -52,6 +52,14 @@ where
         self.enb.set_duty(duty);
     }
 
+    pub fn get_duty_a(&self) -> ENA::Duty {
+        self.ena.get_duty()
+    }
+
+    pub fn get_duty_b(&self) -> ENB::Duty {
+        self.enb.get_duty()
+    }
+
     pub fn forward(&mut self) {
         self.ina1.set_high().ok();
         self.ina2.set_low().ok();

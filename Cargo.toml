@@ -19,6 +19,7 @@ avr-device-macros = "0.5.2"
 avr-progmem = { version = "0.3", features = ["ufmt"], git = "https://github.com/michaelkamprath/avr-progmem-rs.git", branch = "v0.3.4" }
 panic-halt = "0.2.0"
 arduino-hal = {git = "https://github.com/michaelkamprath/avr-hal.git", branch = "ufmt_floating_point", features = ["arduino-mega2560"] }
+micromath = "2"
 
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
@@ -34,7 +35,7 @@ debug = true
 opt-level = "s"
 
 [patch.crates-io]
-# ufmt = { path = "../ufmt" }
+ufmt = { path = "../ufmt" }
 # arduino-hal = { path = "../avr-hal/arduino-hal" }
 # avr-hal-generic = { path = "../avr-hal/avr-hal-generic" }
 # avr-progmem = { path = "../avr-progmem-rs" }
