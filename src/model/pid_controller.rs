@@ -36,14 +36,14 @@ impl PIDController {
     }
 
     pub fn update(&mut self, measurement: f32, measurement_millis: u32) -> f32 {
-        let dt = (measurement_millis - self.last_millis) as f32 / 1000.0;
+        let dt = (measurement_millis - self.last_millis) as f32;
         let error = self.setpoint - measurement;
         self.integral += error * dt;
         let derivative = (error - self.last_error) / dt;
         let mut control_signal = self.kp * error + self.ki * self.integral + self.kd * derivative;
         self.last_error = error;
         self.last_millis = measurement_millis;
-        if control_signal.abs() > self.max_control_signal {
+        if self.max_control_signal > 0.0 && control_signal.abs() > self.max_control_signal {
             control_signal = control_signal.signum() * self.max_control_signal;
         }
         control_signal

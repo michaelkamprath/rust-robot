@@ -164,14 +164,14 @@ impl<
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
         println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
         let target_power: u8 = 125;
-        let mut controller = PIDController::new(20.0, 30.0, 5.0);
+        let mut controller = PIDController::new(7.5, 1.0, 2.0);
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
         controller.set_max_control_signal(40.0);
         let mut heading: f32 = 0.0;
 
         let mut data =
-            DataTable::<ForwardMovementTelemetryRow, 100, FORWARD_TELEMETRY_COLUMN_COUNT>::new(
+            DataTable::<ForwardMovementTelemetryRow, 35, FORWARD_TELEMETRY_COLUMN_COUNT>::new(
                 FORWARD_MOVEMENT_TELEMETRY_HEADERS,
             );
 
@@ -191,7 +191,7 @@ impl<
         let mut last_right_ticks = 0;
         let mut last_checkin_time = millis();
         self.motors.forward();
-        data.append(ForwardMovementTelemetryRow::new(
+        if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
             last_checkin_time,
             0,
             0,
@@ -202,15 +202,16 @@ impl<
             0.0,
             self.motors.get_duty_a(),
             self.motors.get_duty_b(),
-        ))
-        .ok();
+        )) {
+            println!("{}{}", F!("Error appending row to data table: "), error);
+        }
 
         while (self.get_left_wheel_counter() + self.get_right_wheel_counter()) / 2
             < target_wheel_tick_count
         {
             self.handle_loop();
             if millis() - last_checkin_time > CONTROL_LOOP_PERIOD {
-                last_checkin_time = millis();
+                let current_time = millis();
                 let left_ticks = self.get_left_wheel_counter();
                 let right_ticks = self.get_right_wheel_counter();
                 let delta_left_ticks = left_ticks - last_left_ticks;
@@ -238,12 +239,8 @@ impl<
                         .set_duty(target_power + adjustment, target_power - adjustment);
                 }
 
-                // update last checkin values
-                last_left_ticks = left_ticks;
-                last_right_ticks = right_ticks;
-
                 data.append(ForwardMovementTelemetryRow::new(
-                    last_checkin_time,
+                    current_time,
                     left_ticks,
                     right_ticks,
                     distance,
@@ -259,6 +256,11 @@ impl<
                     "updated robot control: delta heading = {}, control signal = {}, distance = {}",
                     heading_change, control_signal, distance,
                 );
+
+                // update last checkin values
+                last_left_ticks = left_ticks;
+                last_right_ticks = right_ticks;
+                last_checkin_time = current_time;
             }
         }
         self.motors.stop();
