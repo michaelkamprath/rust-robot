@@ -1,5 +1,7 @@
 use micromath::F32Ext;
 
+use crate::println;
+
 #[derive(Default, Clone)]
 pub struct PIDController {
     pub kp: f32,
@@ -46,6 +48,14 @@ impl PIDController {
 
     /// Update the controller with a new measurement and the time of the measurement.
     pub fn update(&mut self, measurement: f32, measurement_time: u32) -> f32 {
+        if self.last_time > measurement_time {
+            println!("Time went backwards! {} -> {}", self.last_time, measurement_time);
+            return 0.0;
+        } else if self.last_time == measurement_time {
+            println!("Time didn't change! {}", measurement_time);
+            return 0.0;
+        }
+
         let dt = (measurement_time - self.last_time) as f32;
         let error = self.setpoint - measurement;
         self.integral += error * dt;

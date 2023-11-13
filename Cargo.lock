@@ -12,7 +12,7 @@ dependencies = [
  "avr-hal-generic",
  "cfg-if 1.0.0",
  "embedded-hal",
- "ufmt 0.2.0",
+ "ufmt 0.2.1",
  "void",
 ]
 
@@ -60,18 +60,18 @@ dependencies = [
  "nb 0.1.3",
  "paste",
  "rustversion",
- "ufmt 0.2.0",
+ "ufmt 0.2.1",
  "void",
 ]
 
 [[package]]
 name = "avr-progmem"
-version = "0.3.4"
-source = "git+https://github.com/michaelkamprath/avr-progmem-rs.git?branch=v0.3.4#4826f521f8deb6dd539995cb952033ebb5d8b9e2"
+version = "0.4.0"
+source = "git+https://github.com/michaelkamprath/avr-progmem-rs.git?branch=v0.3.4#e9ab05eee84b87d0a10ecf8e51ca6a9278882a18"
 dependencies = [
  "cfg-if 1.0.0",
  "derivative",
- "ufmt 0.2.1",
+ "ufmt 0.2.0",
 ]
 
 [[package]]
@@ -182,7 +182,8 @@ dependencies = [
  "micromath",
  "nb 1.1.0",
  "panic-halt",
- "ufmt 0.2.0",
+ "udatatable",
+ "ufmt 0.2.1",
 ]
 
 [[package]]
@@ -203,9 +204,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "udatatable"
+version = "0.1.0"
+source = "git+https://github.com/michaelkamprath/udatatable.git#a0d3522f9c851ff19f74df8761554be5e436d9b5"
+dependencies = [
+ "panic-halt",
+ "ufmt 0.2.1",
+]
+
+[[package]]
 name = "ufmt"
 version = "0.2.0"
-source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#5151e580662d26cbfa92ef3dc314c6ad08d8823d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a64846ec02b57e9108d6469d98d1648782ad6bb150a95a9baac26900bbeab9d"
+dependencies = [
+ "ufmt-macros 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ufmt-write 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ufmt"
+version = "0.2.1"
+source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#ecb5349c5c869d41ac29951be84f769135f886a4"
 dependencies = [
  "micromath",
  "ufmt-macros 0.3.0 (git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point)",
@@ -213,16 +233,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ufmt"
-version = "0.2.1"
-dependencies = [
- "ufmt-macros 0.3.0",
- "ufmt-write 0.1.0",
-]
-
-[[package]]
 name = "ufmt-macros"
 version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d337d3be617449165cb4633c8dece429afd83f84051024079f97ad32a9663716"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -232,7 +246,7 @@ dependencies = [
 [[package]]
 name = "ufmt-macros"
 version = "0.3.0"
-source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#5151e580662d26cbfa92ef3dc314c6ad08d8823d"
+source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#ecb5349c5c869d41ac29951be84f769135f886a4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -242,11 +256,13 @@ dependencies = [
 [[package]]
 name = "ufmt-write"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e87a2ed6b42ec5e28cc3b94c09982969e9227600b2e3dcbc1db927a84c06bd69"
 
 [[package]]
 name = "ufmt-write"
 version = "0.1.0"
-source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#5151e580662d26cbfa92ef3dc314c6ad08d8823d"
+source = "git+https://github.com/michaelkamprath/ufmt.git?branch=floating_point#ecb5349c5c869d41ac29951be84f769135f886a4"
 
 [[package]]
 name = "unicode-ident"

@@ -2,12 +2,13 @@ use arduino_hal::delay_ms;
 use avr_progmem::progmem_str as F;
 use micromath::F32Ext;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
+use udatatable::uDataTable;
 
 use crate::{
     l298n::motor_controller::MotorController,
     model::pid_controller::PIDController,
-    println,
-    system::{data_table::DataTable, millis::millis},
+    println, print_with_fn,
+    system::millis::millis,
     telemetry::{
         ForwardMovementTelemetryRow, FORWARD_MOVEMENT_TELEMETRY_HEADERS,
         FORWARD_TELEMETRY_COLUMN_COUNT,
@@ -94,7 +95,6 @@ impl<
             let new_bits = r.bits() | 0b00001100; // INT2 and INT3
             w.bits(new_bits)
         });
-        // println!("   wheel counter interrupts set up");
 
         // create self structure
         Self {
@@ -163,16 +163,16 @@ impl<
 
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
         println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
-        let target_power: u8 = 125;
-        let mut controller = PIDController::new(2.5, 0.2, 0.1);
+        let target_power: u8 = 105;
+        let mut controller = PIDController::new(10.0, 0.06, 3.0);
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
-        controller.set_max_control_signal(40.0);
+        controller.set_max_control_signal(30.0);
         // heading is in radians
         let mut heading: f32 = 0.0;
 
         let mut data =
-            DataTable::<ForwardMovementTelemetryRow, 35, FORWARD_TELEMETRY_COLUMN_COUNT>::new(
+            uDataTable::<ForwardMovementTelemetryRow, 35, FORWARD_TELEMETRY_COLUMN_COUNT>::new(
                 FORWARD_MOVEMENT_TELEMETRY_HEADERS,
             );
 
@@ -213,7 +213,7 @@ impl<
             < target_wheel_tick_count
         {
             self.handle_loop();
-            if millis() - last_checkin_time > CONTROL_LOOP_PERIOD {
+            if millis() - last_checkin_time > CONTROL_LOOP_PERIOD  && self.get_left_wheel_counter() > 5 && self.get_right_wheel_counter() > 5 {
                 let current_time = millis();
                 let left_ticks = self.get_left_wheel_counter();
                 let right_ticks = self.get_right_wheel_counter();
@@ -230,16 +230,16 @@ impl<
                 heading += heading_change;
 
                 // get control signal from PID controller
-                let control_signal = controller.update(heading, last_checkin_time);
+                let control_signal = controller.update(heading, current_time);
 
                 // set motor power. positive control signal means turn left, a positive power means turn right
                 let adjustment = control_signal.abs() as u8;
                 if control_signal > 0.0 {
                     self.motors
-                        .set_duty(target_power - adjustment, target_power + adjustment);
+                        .set_duty(target_power - adjustment/2, target_power + adjustment);
                 } else {
                     self.motors
-                        .set_duty(target_power + adjustment, target_power - adjustment);
+                        .set_duty(target_power + adjustment, target_power - adjustment/2);
                 }
 
                 if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
@@ -272,6 +272,20 @@ impl<
         let stop_millis = millis();
         let left_ticks = self.get_left_wheel_counter();
         let right_ticks = self.get_right_wheel_counter();
+        let left_power = self.motors.get_duty_a();
+        let right_power = self.motors.get_duty_b();
+        // ensure a stop by reversing for a short time
+        self.motors.set_duty(255, 255);
+        self.motors.reverse();
+        delay_ms(100);
+        self.motors.stop();
+        println!(
+            " Stop overshoot: left_ticks = {}, right_ticks = {}",
+            self.get_left_wheel_counter() - left_ticks,
+            self.get_right_wheel_counter() - right_ticks,
+        );
+
+
         let distance = ((left_ticks + right_ticks) / 2) as f32 * WHEEL_CIRCUMFERENCE
             / WHEEL_ENCODER_TICK_COUNT as f32;
         let heading_change = (WHEEL_CIRCUMFERENCE / WHEEL_ENCODER_TICK_COUNT as f32)
@@ -288,8 +302,8 @@ impl<
             heading,
             0.0,
             controller.integral,
-            self.motors.get_duty_a(),
-            self.motors.get_duty_b(),
+            left_power,
+            right_power,
         ))
         .ok();
 
@@ -300,47 +314,19 @@ impl<
         );
 
         println!("{}", F!("Plotting control signal"));
-        data.plot(|row| row.control_signal() as i32);
+        print_with_fn!(
+            |f| {
+                data.plot(
+                    f,
+                    |row: &ForwardMovementTelemetryRow| row.control_signal() as i32,
+                )
+            }
+        );
 
         self
     }
 
     pub fn calibrate_motors(&mut self) {
-        #[derive(Default, Copy, Clone)]
-        struct MotorCalibrationRow {
-            test_id: u16,
-            power: u8,
-            left_ticks: u32,
-            right_ticks: u32,
-            lr_ratio: f32,
-        }
-
-        impl uDebug for MotorCalibrationRow {
-            fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
-            where
-                W: uWrite + ?Sized,
-            {
-                uwrite!(f, "MotorCalibrationRow {{ test_id: {}, power: {}, left_ticks: {}, right_ticks: {}, lr_ratio: {} }}", self.test_id, self.power, self.left_ticks, self.right_ticks, self.lr_ratio)
-            }
-        }
-
-        impl uDisplay for MotorCalibrationRow {
-            fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
-            where
-                W: uWrite + ?Sized,
-            {
-                uwrite!(
-                    f,
-                    "{}, {}, {}, {}, {}",
-                    self.test_id,
-                    self.power,
-                    self.left_ticks,
-                    self.right_ticks,
-                    self.lr_ratio
-                )
-            }
-        }
-
         println!("{}", F!("Calibrating motors"));
 
         const COUNT_TEST_POWER_LEVELS: usize = 12;
@@ -349,7 +335,7 @@ impl<
         let test_power_levels: [u8; COUNT_TEST_POWER_LEVELS] =
             [70, 80, 90, 100, 110, 120, 140, 160, 180, 200, 225, 255];
 
-        let mut data = DataTable::<MotorCalibrationRow, COUNT_TEST_DATA_ROWS, 5>::new([
+        let mut data = uDataTable::<MotorCalibrationRow, COUNT_TEST_DATA_ROWS, 5>::new([
             "test_id",
             "power",
             "left_ticks",
@@ -402,5 +388,40 @@ impl<
             F!("Done with motor calibration. Data collected:\n"),
             data
         );
+    }
+}
+
+#[derive(Default, Copy, Clone)]
+pub struct MotorCalibrationRow {
+    test_id: u16,
+    power: u8,
+    left_ticks: u32,
+    right_ticks: u32,
+    lr_ratio: f32,
+}
+
+impl uDebug for MotorCalibrationRow {
+    fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        uwrite!(f, "MotorCalibrationRow {{ test_id: {}, power: {}, left_ticks: {}, right_ticks: {}, lr_ratio: {} }}", self.test_id, self.power, self.left_ticks, self.right_ticks, self.lr_ratio)
+    }
+}
+
+impl uDisplay for MotorCalibrationRow {
+    fn fmt<W>(&self, f: &mut Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        uwrite!(
+            f,
+            "{}, {}, {}, {}, {}",
+            self.test_id,
+            self.power,
+            self.left_ticks,
+            self.right_ticks,
+            self.lr_ratio
+        )
     }
 }
