@@ -1,13 +1,13 @@
 use arduino_hal::delay_ms;
 use avr_progmem::progmem_str as F;
 use micromath::F32Ext;
-use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 use udatatable::uDataTable;
+use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
 use crate::{
     l298n::motor_controller::MotorController,
     model::pid_controller::PIDController,
-    println, print_with_fn,
+    print_with_fn, println,
     system::millis::millis,
     telemetry::{
         ForwardMovementTelemetryRow, FORWARD_MOVEMENT_TELEMETRY_HEADERS,
@@ -213,7 +213,10 @@ impl<
             < target_wheel_tick_count
         {
             self.handle_loop();
-            if millis() - last_checkin_time > CONTROL_LOOP_PERIOD  && self.get_left_wheel_counter() > 5 && self.get_right_wheel_counter() > 5 {
+            if millis() - last_checkin_time > CONTROL_LOOP_PERIOD
+                && self.get_left_wheel_counter() > 5
+                && self.get_right_wheel_counter() > 5
+            {
                 let current_time = millis();
                 let left_ticks = self.get_left_wheel_counter();
                 let right_ticks = self.get_right_wheel_counter();
@@ -236,10 +239,10 @@ impl<
                 let adjustment = control_signal.abs() as u8;
                 if control_signal > 0.0 {
                     self.motors
-                        .set_duty(target_power - adjustment/2, target_power + adjustment);
+                        .set_duty(target_power - adjustment / 2, target_power + adjustment);
                 } else {
                     self.motors
-                        .set_duty(target_power + adjustment, target_power - adjustment/2);
+                        .set_duty(target_power + adjustment, target_power - adjustment / 2);
                 }
 
                 if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
@@ -285,7 +288,6 @@ impl<
             self.get_right_wheel_counter() - right_ticks,
         );
 
-
         let distance = ((left_ticks + right_ticks) / 2) as f32 * WHEEL_CIRCUMFERENCE
             / WHEEL_ENCODER_TICK_COUNT as f32;
         let heading_change = (WHEEL_CIRCUMFERENCE / WHEEL_ENCODER_TICK_COUNT as f32)
@@ -314,14 +316,11 @@ impl<
         );
 
         println!("{}", F!("Plotting control signal"));
-        print_with_fn!(
-            |f| {
-                data.plot(
-                    f,
-                    |row: &ForwardMovementTelemetryRow| row.control_signal() as i32,
-                )
-            }
-        );
+        print_with_fn!(|f| {
+            data.plot(f, |row: &ForwardMovementTelemetryRow| {
+                row.control_signal() as i32
+            })
+        });
 
         self
     }

@@ -9,7 +9,7 @@ pub static CONSOLE: interrupt::Mutex<RefCell<Option<Console>>> =
     interrupt::Mutex::new(RefCell::new(None));
 
 #[macro_export]
-macro_rules! print {    
+macro_rules! print {
     ($($t:tt)*) => {
         avr_device::interrupt::free(
             |cs| {
@@ -37,14 +37,15 @@ macro_rules! println {
 #[macro_export]
 macro_rules! print_with_fn {
     ($print_fn:expr) => {
-        avr_device::interrupt::free(
-            |cs| {
-
-                if let Some(console) = crate::system::serial_print::CONSOLE.borrow(cs).borrow_mut().as_mut() {
-                    let _ = $print_fn(console);
-                }
-            },
-        )
+        avr_device::interrupt::free(|cs| {
+            if let Some(console) = crate::system::serial_print::CONSOLE
+                .borrow(cs)
+                .borrow_mut()
+                .as_mut()
+            {
+                let _ = $print_fn(console);
+            }
+        })
     };
 }
 
