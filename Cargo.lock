@@ -207,6 +207,8 @@ dependencies = [
 [[package]]
 name = "udatatable"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72a2c9eda8ddd5ee8aaa20891d85fffc853de9f7d437a22a0090ca6c692dc569"
 dependencies = [
  "panic-halt",
  "ufmt",

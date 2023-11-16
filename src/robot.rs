@@ -6,7 +6,7 @@ use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
 use crate::{
     l298n::motor_controller::MotorController,
-    model::pid_controller::PIDController,
+    model::{pid_controller::PIDController, motor_calibration::get_lr_motor_power},
     print_with_fn, println,
     system::millis::millis,
     telemetry::{
@@ -27,7 +27,7 @@ use embedded_hal::{
 const WHEEL_CIRCUMFERENCE: f32 = 214.0; // millimeters
 const WHEEL_BASE: f32 = 132.5; // millimeters
 const WHEEL_ENCODER_TICK_COUNT: u32 = 20;
-const CONTROL_LOOP_PERIOD: u32 = 100; // milliseconds
+const CONTROL_LOOP_PERIOD: u32 = 70; // milliseconds
 
 static LEFT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
 static RIGHT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
@@ -163,8 +163,9 @@ impl<
 
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
         println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
-        let target_power: u8 = 105;
-        let mut controller = PIDController::new(10.0, 0.06, 3.0);
+        let target_power: u8 = 125;
+        let (left_target_power, right_target_power) = get_lr_motor_power(target_power);
+        let mut controller = PIDController::new(50.0, 0.004, 0.0015);
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
         controller.set_max_control_signal(30.0);
@@ -176,7 +177,7 @@ impl<
                 FORWARD_MOVEMENT_TELEMETRY_HEADERS,
             );
 
-        self.motors.set_duty(target_power, target_power);
+        self.motors.set_duty(left_target_power, right_target_power);
 
         let target_wheel_tick_count: u32 =
             1 + ((WHEEL_ENCODER_TICK_COUNT * distance_mm) as f32 / WHEEL_CIRCUMFERENCE) as u32;
@@ -239,10 +240,10 @@ impl<
                 let adjustment = control_signal.abs() as u8;
                 if control_signal > 0.0 {
                     self.motors
-                        .set_duty(target_power - adjustment / 2, target_power + adjustment);
+                        .set_duty(left_target_power - adjustment / 2, right_target_power + adjustment);
                 } else {
                     self.motors
-                        .set_duty(target_power + adjustment, target_power - adjustment / 2);
+                        .set_duty(left_target_power + adjustment, right_target_power - adjustment / 2);
                 }
 
                 if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
@@ -353,17 +354,17 @@ impl<
                 self.motors.set_duty(left_power, right_power);
                 self.reset_wheel_counters();
                 self.motors.forward();
-                while self.get_left_wheel_counter() < 100 {
+                while self.get_left_wheel_counter() < 200 {
                     self.handle_loop();
                 }
                 self.motors.stop();
+                let left_ticks = self.get_left_wheel_counter();
+                let right_ticks = self.get_right_wheel_counter();
                 self.motors.set_duty(255, 255);
                 self.motors.reverse();
                 delay_ms(50);
                 self.motors.stop();
                 delay_ms(1000);
-                let left_ticks = self.get_left_wheel_counter();
-                let right_ticks = self.get_right_wheel_counter();
                 let lr_ratio = left_ticks as f32 / right_ticks as f32;
                 if let Err(row) = data.append(MotorCalibrationRow {
                     test_id,

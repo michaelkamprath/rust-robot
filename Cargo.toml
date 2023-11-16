@@ -20,7 +20,7 @@ avr-progmem = "0.4"
 panic-halt = "0.2.0"
 arduino-hal = {git = "https://github.com/michaelkamprath/avr-hal.git", branch = "ufmt_floating_point", features = ["arduino-mega2560"] }
 micromath = "2"
-udatatable = { git = "https://github.com/michaelkamprath/udatatable.git", features = ["plot"]}
+udatatable = { version = "0.1", features = ["plot"] }
 
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
@@ -37,6 +37,7 @@ opt-level = "s"
 
 [patch.crates-io]
 ufmt = { path = "../ufmt" }
+# udatatable = { path = "../udatatable" }
 # arduino-hal = { path = "../avr-hal/arduino-hal" }
 # avr-hal-generic = { path = "../avr-hal/avr-hal-generic" }
 # avr-progmem = { path = "../avr-progmem-rs" }
@@ -47,5 +48,5 @@ ufmt = { path = "../ufmt" }
 [patch."https://github.com/michaelkamprath/ufmt.git"]
 ufmt = { path = "../ufmt" }
 
-[patch."https://github.com/michaelkamprath/udatatable.git"]
-udatatable = { path = "../udatatable" }
+# [patch."https://github.com/michaelkamprath/udatatable.git"]
+# udatatable = { path = "../udatatable" }
