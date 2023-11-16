@@ -38,6 +38,13 @@ fn main() -> ! {
 
     let timer4: Timer4Pwm = Timer4Pwm::new(dp.TC4, Prescaler::Prescale64);
 
+    let i2c = arduino_hal::I2c::new(
+        dp.TWI,
+        pins.d20.into_pull_up_input(),
+        pins.d21.into_pull_up_input(),
+        50000,
+    );
+
     let mut robot = Robot::new(
         pins.d4.into_output(),
         pins.d5.into_output(),
@@ -48,6 +55,7 @@ fn main() -> ! {
         pins.d26.into_floating_input(),
         &dp.EXINT.eicra,
         &dp.EXINT.eimsk,
+        i2c,    // takes ownership of i2c
     );
     println!("{}", F!("Robot initialized"));
     let mut led = pins.d13.into_output();

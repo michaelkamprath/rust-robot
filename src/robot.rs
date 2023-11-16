@@ -1,4 +1,4 @@
-use arduino_hal::delay_ms;
+use arduino_hal::{delay_ms, I2c, Delay};
 use avr_progmem::progmem_str as F;
 use micromath::F32Ext;
 use udatatable::uDataTable;
@@ -23,11 +23,16 @@ use embedded_hal::{
     digital::v2::{InputPin, OutputPin},
     PwmPin,
 };
+use mpu6050::{Mpu6050, Mpu6050Error};
 
 const WHEEL_CIRCUMFERENCE: f32 = 214.0; // millimeters
 const WHEEL_BASE: f32 = 132.5; // millimeters
 const WHEEL_ENCODER_TICK_COUNT: u32 = 20;
-const CONTROL_LOOP_PERIOD: u32 = 70; // milliseconds
+const CONTROL_LOOP_PERIOD: u32 = 75; // milliseconds
+
+const HEADING_PID_CONTROLLER_KP: f32 = 20.0;
+const HEADING_PID_CONTROLLER_KI: f32 = 0.0;
+const HEADING_PID_CONTROLLER_KD: f32 = 0.0;
 
 static LEFT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
 static RIGHT_WHEEL_COUNTER: Mutex<Cell<u32>> = Mutex::new(Cell::new(0));
@@ -64,6 +69,7 @@ pub struct Robot<
     motors: MotorController<INA1, INA2, INB1, INB2, ENA, ENB>,
     button: BUTT1,
     button_pressed: bool,
+    imu: Mpu6050<I2c>,
 }
 
 #[allow(dead_code)]
@@ -87,6 +93,7 @@ impl<
         button_pin: BUTT1,
         eicra: &Reg<eicra::EICRA_SPEC>,
         eimsk: &Reg<eimsk::EIMSK_SPEC>,
+        i2c: I2c,
     ) -> Self {
         // set up wheel counter interupts
         eicra.modify(|_, w| w.isc2().val_0x03());
@@ -96,11 +103,26 @@ impl<
             w.bits(new_bits)
         });
 
+        let mut imu = Mpu6050::new(i2c);
+        let mut delay = Delay::new();
+        match imu.init(&mut delay) {
+            Ok(()) => println!("{}", F!("MPU6050 initialized")),
+            Err(Mpu6050Error::InvalidChipId(id)) => {
+                println!("{}{}", F!("Error initializing MPU6050: InvalidChipId = "), id)
+            },
+            Err(Mpu6050Error::I2c(_error)) => {
+                println!("{}", F!("Error initializing MPU6050: I2cError "))
+            },
+        }
+        if let Err(_error) = imu.set_gyro_range(mpu6050::device::GyroRange::D250) {
+            println!("{}", F!("Error setting gyro range"));
+        }
         // create self structure
         Self {
             motors: MotorController::new(ina1_pin, ina2_pin, inb1_pin, inb2_pin, ena_pin, enb_pin),
             button: button_pin,
             button_pressed: false,
+            imu: imu,
         }
     }
 
@@ -151,7 +173,7 @@ impl<
         // the button is active low
         if self.button.is_low().ok().unwrap() {
             if !self.button_pressed {
-                println!("robot button pressed");
+                println!("{}",F!("robot button pressed"));
                 self.button_pressed = true;
                 return true;
             }
@@ -165,7 +187,11 @@ impl<
         println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
         let target_power: u8 = 125;
         let (left_target_power, right_target_power) = get_lr_motor_power(target_power);
-        let mut controller = PIDController::new(50.0, 0.004, 0.0015);
+        let mut controller = PIDController::new(
+            HEADING_PID_CONTROLLER_KP, 
+            HEADING_PID_CONTROLLER_KI,
+            HEADING_PID_CONTROLLER_KD,
+        );
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
         controller.set_max_control_signal(30.0);
@@ -194,12 +220,12 @@ impl<
         let mut last_checkin_time = millis();
         controller.reset(last_checkin_time);
         self.motors.forward();
+
         if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
             last_checkin_time,
             0,
             0,
             0.0,
-            target_wheel_tick_count,
             0.0,
             0.0,
             0.0,
@@ -246,12 +272,13 @@ impl<
                         .set_duty(left_target_power + adjustment, right_target_power - adjustment / 2);
                 }
 
+                let gyro_val = self.imu.get_gyro().unwrap();
+
                 if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
                     current_time,
                     left_ticks,
                     right_ticks,
                     distance,
-                    target_wheel_tick_count,
                     heading_change,
                     heading,
                     control_signal,
@@ -262,8 +289,8 @@ impl<
                     println!("{}{}", F!("Error appending row to data table: "), error);
                 }
                 println!(
-                    "updated robot control: delta heading = {}, control signal = {}, distance = {}",
-                    heading_change, control_signal, distance,
+                    "updated robot control: delta heading = {}, control signal = {}, distance = {}, gyro_x = {}, gyro_y = {}, gyro_z = {}",
+                    heading_change, control_signal, distance, gyro_val.x, gyro_val.y, gyro_val.z,
                 );
 
                 // update last checkin values
@@ -300,7 +327,6 @@ impl<
             left_ticks,
             right_ticks,
             distance,
-            target_wheel_tick_count,
             heading_change,
             heading,
             0.0,
@@ -326,6 +352,7 @@ impl<
         self
     }
 
+    #[cfg(feature = "calibrate_motors")]
     pub fn calibrate_motors(&mut self) {
         println!("{}", F!("Calibrating motors"));
 

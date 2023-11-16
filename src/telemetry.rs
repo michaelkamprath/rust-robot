@@ -1,12 +1,11 @@
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
-pub const FORWARD_TELEMETRY_COLUMN_COUNT: usize = 11;
+pub const FORWARD_TELEMETRY_COLUMN_COUNT: usize = 10;
 pub static FORWARD_MOVEMENT_TELEMETRY_HEADERS: [&str; FORWARD_TELEMETRY_COLUMN_COUNT] = [
     "millis",
     "Left Wheel Counter",
     "Right Wheel Counter",
     "Distance",
-    "Target Wheel Tick Count",
     "Delta Heading",
     "Current Heading",
     "Control Signal",
@@ -21,7 +20,6 @@ pub struct ForwardMovementTelemetryRow {
     left_encoder: u32,
     right_encoder: u32,
     distance: f32,
-    target_wheel_tick_count: u32,
     delta_heading: f32,
     current_heading: f32,
     control_signal: f32,
@@ -37,7 +35,6 @@ impl ForwardMovementTelemetryRow {
         left_encoder: u32,
         right_encoder: u32,
         distance: f32,
-        target_wheel_tick_count: u32,
         delta_heading: f32,
         current_heading: f32,
         control_signal: f32,
@@ -50,7 +47,6 @@ impl ForwardMovementTelemetryRow {
             left_encoder,
             right_encoder,
             distance,
-            target_wheel_tick_count,
             delta_heading,
             current_heading,
             control_signal,
@@ -94,12 +90,11 @@ impl uDisplay for ForwardMovementTelemetryRow {
     {
         uwrite!(
             f,
-            "{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}",
+            "{}, {}, {}, {}, {}, {}, {}, {}, {}, {},",
             self.timestamp,
             self.left_encoder,
             self.right_encoder,
             self.distance,
-            self.target_wheel_tick_count,
             self.delta_heading,
             self.current_heading,
             self.control_signal,
