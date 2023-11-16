@@ -129,6 +129,7 @@ checksum = "c3c8dda44ff03a2f238717214da50f65d5a53b45cd213a7370424ffdb6fae815"
 [[package]]
 name = "mpu6050"
 version = "0.1.6"
+source = "git+https://github.com/michaelkamprath/mpu6050.git?branch=micromath#3960d52606dc1f62ba51a7b0318783422ca34b70"
 dependencies = [
  "embedded-hal",
  "micromath",

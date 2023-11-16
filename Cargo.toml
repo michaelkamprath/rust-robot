@@ -21,7 +21,7 @@ panic-halt = "0.2.0"
 arduino-hal = {git = "https://github.com/michaelkamprath/avr-hal.git", branch = "ufmt_floating_point", features = ["arduino-mega2560"] }
 micromath = "2"
 udatatable = { version = "0.1", features = ["plot"] }
-mpu6050 = "0.1"
+mpu6050 = { git = "https://github.com/michaelkamprath/mpu6050.git", branch = "micromath" }
 
 
 # Configure the build for minimal size - AVRs have very little program memory
@@ -39,7 +39,7 @@ opt-level = "s"
 
 [patch.crates-io]
 ufmt = { path = "../ufmt" }
-mpu6050 = { path = "../mpu6050" }
+# mpu6050 = { path = "../mpu6050" }
 # udatatable = { path = "../udatatable" }
 # arduino-hal = { path = "../avr-hal/arduino-hal" }
 # avr-hal-generic = { path = "../avr-hal/avr-hal-generic" }
