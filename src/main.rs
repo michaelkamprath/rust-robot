@@ -33,6 +33,7 @@ fn main() -> ! {
     let serial = arduino_hal::default_serial!(dp, pins, 57600);
     put_console(serial);
     println!("{}", F!("Starting the Rust Robot! :D"));
+    println!("Initializing millis");
     millis_init(dp.TC0);
     println!("{}", F!("Millis initialized"));
 
