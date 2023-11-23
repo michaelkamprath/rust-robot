@@ -8,15 +8,11 @@ mod robot;
 mod system;
 mod telemetry;
 
-use panic_halt as _;
-
-use arduino_hal;
-use avr_progmem::progmem_str as F;
-
 use arduino_hal::{
     pac::Peripherals,
     simple_pwm::{IntoPwmPin, Prescaler, Timer4Pwm},
 };
+use panic_halt as _;
 
 use robot::Robot;
 use system::{
@@ -32,10 +28,9 @@ fn main() -> ! {
     let pins = arduino_hal::pins!(dp);
     let serial = arduino_hal::default_serial!(dp, pins, 57600);
     put_console(serial);
-    println!("{}", F!("Starting the Rust Robot! :D"));
+    println!("Starting the Rust Robot! :D");
     println!("Initializing millis");
     millis_init(dp.TC0);
-    println!("{}", F!("Millis initialized"));
 
     let timer4: Timer4Pwm = Timer4Pwm::new(dp.TC4, Prescaler::Prescale64);
 
@@ -56,19 +51,18 @@ fn main() -> ! {
         pins.d26.into_floating_input(),
         &dp.EXINT.eicra,
         &dp.EXINT.eimsk,
-        i2c,    // takes ownership of i2c
+        i2c, // takes ownership of i2c
     );
-    println!("{}", F!("Robot initialized"));
+    println!("Robot initialized");
     let mut led = pins.d13.into_output();
-    println!("{}", F!("LED initialized"));
     unsafe { avr_device::interrupt::enable() };
-    println!("{}", F!("Interrupts enabled"));
+    println!("Interrupts enabled");
 
     robot.reset_wheel_counters();
     let mut led_blink_time = millis();
     loop {
         if robot.button_pressed() {
-            println!("{}", F!("Button pressed, testing movement"));
+            println!("Button pressed, testing movement");
             led.set_high();
             robot.straight(2000);
             led.set_low();

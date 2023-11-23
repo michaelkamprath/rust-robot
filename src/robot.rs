@@ -1,18 +1,16 @@
-use arduino_hal::{delay_ms, I2c, Delay};
-use avr_progmem::progmem_str as F;
+use arduino_hal::{delay_ms, Delay, I2c};
 use micromath::F32Ext;
-use udatatable::uDataTable;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
 use crate::{
     l298n::motor_controller::MotorController,
-    model::{pid_controller::PIDController, motor_calibration::get_lr_motor_power},
-    print_with_fn, println,
-    system::millis::millis,
-    telemetry::{
-        ForwardMovementTelemetryRow, FORWARD_MOVEMENT_TELEMETRY_HEADERS,
-        FORWARD_TELEMETRY_COLUMN_COUNT,
+    model::{
+        heading_calculator::HeadingCalculator, motor_calibration::get_lr_motor_power,
+        pid_controller::PIDController,
     },
+    print_with_fn, println,
+    system::{data_logging::log_csv_headers, millis::millis},
+    telemetry::{ForwardMovementTelemetryRow, FORWARD_MOVEMENT_TELEMETRY_HEADERS},
 };
 use avr_device::atmega2560::exint::{eicra, eimsk};
 use avr_device::generic::Reg;
@@ -69,7 +67,7 @@ pub struct Robot<
     motors: MotorController<INA1, INA2, INB1, INB2, ENA, ENB>,
     button: BUTT1,
     button_pressed: bool,
-    imu: Mpu6050<I2c>,
+    heading_calculator: HeadingCalculator,
 }
 
 #[allow(dead_code)]
@@ -106,23 +104,23 @@ impl<
         let mut imu = Mpu6050::new(i2c);
         let mut delay = Delay::new();
         match imu.init(&mut delay) {
-            Ok(()) => println!("{}", F!("MPU6050 initialized")),
+            Ok(()) => println!("MPU6050 initialized"),
             Err(Mpu6050Error::InvalidChipId(id)) => {
-                println!("{}{}", F!("Error initializing MPU6050: InvalidChipId = "), id)
-            },
+                println!("Error initializing MPU6050: InvalidChipId = {}", id)
+            }
             Err(Mpu6050Error::I2c(_error)) => {
-                println!("{}", F!("Error initializing MPU6050: I2cError "))
-            },
+                println!("Error initializing MPU6050: I2cError ")
+            }
         }
         if let Err(_error) = imu.set_gyro_range(mpu6050::device::GyroRange::D250) {
-            println!("{}", F!("Error setting gyro range"));
+            println!("Error setting gyro range");
         }
         // create self structure
         Self {
             motors: MotorController::new(ina1_pin, ina2_pin, inb1_pin, inb2_pin, ena_pin, enb_pin),
             button: button_pin,
             button_pressed: false,
-            imu: imu,
+            heading_calculator: HeadingCalculator::new(imu),
         }
     }
 
@@ -132,6 +130,8 @@ impl<
         if self.button.is_high().ok().unwrap() {
             self.button_pressed = false;
         }
+
+        self.heading_calculator.update();
     }
 
     /// Resets the wheel counters to 0
@@ -173,7 +173,7 @@ impl<
         // the button is active low
         if self.button.is_low().ok().unwrap() {
             if !self.button_pressed {
-                println!("{}",F!("robot button pressed"));
+                println!("robot button pressed");
                 self.button_pressed = true;
                 return true;
             }
@@ -184,24 +184,20 @@ impl<
     }
 
     pub fn straight(&mut self, distance_mm: u32) -> &mut Self {
-        println!("{}{}", F!("Robot move straight, distance = "), distance_mm);
+        println!("Robot move straight, distance = {}", distance_mm);
         let target_power: u8 = 125;
         let (left_target_power, right_target_power) = get_lr_motor_power(target_power);
         let mut controller = PIDController::new(
-            HEADING_PID_CONTROLLER_KP, 
+            HEADING_PID_CONTROLLER_KP,
             HEADING_PID_CONTROLLER_KI,
             HEADING_PID_CONTROLLER_KD,
         );
         // we want a heading of 0.0 (straight ahead)
         controller.set_setpoint(0.0);
         controller.set_max_control_signal(30.0);
+        println!("controller = {}", controller);
         // heading is in radians
         let mut heading: f32 = 0.0;
-
-        let mut data =
-            uDataTable::<ForwardMovementTelemetryRow, 35, FORWARD_TELEMETRY_COLUMN_COUNT>::new(
-                FORWARD_MOVEMENT_TELEMETRY_HEADERS,
-            );
 
         self.motors.set_duty(left_target_power, right_target_power);
 
@@ -211,30 +207,33 @@ impl<
         self.reset_wheel_counters();
 
         println!(
-            "{}{}",
-            F!("Starting robot movement. Target wheel tick count = "),
+            "Starting robot movement. Target wheel tick count = {}\nData table:\n\n",
             target_wheel_tick_count,
         );
+
+        print_with_fn!(|f| { log_csv_headers(f, &FORWARD_MOVEMENT_TELEMETRY_HEADERS,) });
         let mut last_left_ticks = 0;
         let mut last_right_ticks = 0;
         let mut last_checkin_time = millis();
         controller.reset(last_checkin_time);
+        self.heading_calculator.reset();
         self.motors.forward();
 
-        if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
+        let mut data_row = ForwardMovementTelemetryRow::new(
             last_checkin_time,
             0,
             0,
             0.0,
             0.0,
             0.0,
+            self.heading_calculator.heading(),
             0.0,
             controller.integral,
             self.motors.get_duty_a(),
             self.motors.get_duty_b(),
-        )) {
-            println!("{}{}", F!("Error appending row to data table: "), error);
-        }
+        );
+
+        println!("{}", data_row);
 
         while (self.get_left_wheel_counter() + self.get_right_wheel_counter()) / 2
             < target_wheel_tick_count
@@ -262,35 +261,35 @@ impl<
                 // get control signal from PID controller
                 let control_signal = controller.update(heading, current_time);
 
-                // set motor power. positive control signal means turn left, a positive power means turn right
+                // set motor power. positive control signal means turn left, a negative control signal means turn right
                 let adjustment = control_signal.abs() as u8;
                 if control_signal > 0.0 {
-                    self.motors
-                        .set_duty(left_target_power - adjustment / 2, right_target_power + adjustment);
+                    self.motors.set_duty(
+                        left_target_power - adjustment / 2,
+                        right_target_power + adjustment,
+                    );
                 } else {
-                    self.motors
-                        .set_duty(left_target_power + adjustment, right_target_power - adjustment / 2);
+                    self.motors.set_duty(
+                        left_target_power + adjustment,
+                        right_target_power - adjustment / 2,
+                    );
                 }
 
-                let gyro_val = self.imu.get_gyro().unwrap();
-
-                if let Err(error) = data.append(ForwardMovementTelemetryRow::new(
-                    current_time,
-                    left_ticks,
-                    right_ticks,
-                    distance,
-                    heading_change,
-                    heading,
-                    control_signal,
-                    controller.integral,
-                    self.motors.get_duty_a(),
-                    self.motors.get_duty_b(),
-                )) {
-                    println!("{}{}", F!("Error appending row to data table: "), error);
-                }
                 println!(
-                    "updated robot control: delta heading = {}, control signal = {}, distance = {}, gyro_x = {}, gyro_y = {}, gyro_z = {}",
-                    heading_change, control_signal, distance, gyro_val.x, gyro_val.y, gyro_val.z,
+                    "{}",
+                    data_row.update(
+                        current_time,
+                        left_ticks,
+                        right_ticks,
+                        distance,
+                        heading_change,
+                        heading,
+                        self.heading_calculator.heading(),
+                        control_signal,
+                        controller.integral,
+                        self.motors.get_duty_a(),
+                        self.motors.get_duty_b(),
+                    )
                 );
 
                 // update last checkin values
@@ -310,11 +309,6 @@ impl<
         self.motors.reverse();
         delay_ms(100);
         self.motors.stop();
-        println!(
-            " Stop overshoot: left_ticks = {}, right_ticks = {}",
-            self.get_left_wheel_counter() - left_ticks,
-            self.get_right_wheel_counter() - right_ticks,
-        );
 
         let distance = ((left_ticks + right_ticks) / 2) as f32 * WHEEL_CIRCUMFERENCE
             / WHEEL_ENCODER_TICK_COUNT as f32;
@@ -322,32 +316,35 @@ impl<
             * (right_ticks as f32 - left_ticks as f32)
             / WHEEL_BASE;
         heading += heading_change;
-        data.append(ForwardMovementTelemetryRow::new(
-            stop_millis,
-            left_ticks,
-            right_ticks,
-            distance,
-            heading_change,
-            heading,
-            0.0,
-            controller.integral,
-            left_power,
-            right_power,
-        ))
-        .ok();
-
         println!(
-            "{}{}",
-            F!("Done with robot movement. Wheel counter data collected:\n"),
-            data
+            "{}\n",
+            data_row.update(
+                stop_millis,
+                left_ticks,
+                right_ticks,
+                distance,
+                heading_change,
+                heading,
+                self.heading_calculator.heading(),
+                0.0,
+                controller.integral,
+                left_power,
+                right_power,
+            )
         );
+        println!(
+            "Stop overshoot: left_ticks = {}, right_ticks = {}",
+            self.get_left_wheel_counter() - left_ticks,
+            self.get_right_wheel_counter() - right_ticks,
+        );
+        println!("Done with robot movement.");
 
-        println!("{}", F!("Plotting control signal"));
-        print_with_fn!(|f| {
-            data.plot(f, |row: &ForwardMovementTelemetryRow| {
-                row.control_signal() as i32
-            })
-        });
+        // println!("Plotting control signal");
+        // print_with_fn!(|f| {
+        //     data.plot(f, |row: &ForwardMovementTelemetryRow| {
+        //         row.control_signal() as i32
+        //     })
+        // });
 
         self
     }

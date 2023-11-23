@@ -16,25 +16,23 @@ nb = "1.1.0"
 embedded-hal = "0.2.7"
 avr-device = "0.5.2"
 avr-device-macros = "0.5.2"
-avr-progmem = "0.4"
 panic-halt = "0.2.0"
 arduino-hal = {git = "https://github.com/michaelkamprath/avr-hal.git", branch = "ufmt_floating_point", features = ["arduino-mega2560"] }
 micromath = "2"
-udatatable = { version = "0.1", features = ["plot"] }
 mpu6050 = { git = "https://github.com/michaelkamprath/mpu6050.git", branch = "micromath" }
 
 
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
 panic = "abort"
-# lto = true
+# lto = "thin"
 opt-level = "s"
 
 [profile.release]
 panic = "abort"
 codegen-units = 1
-debug = true
-# lto = true
+debug = false
+# lto = "thin"
 opt-level = "s"
 
 [patch.crates-io]

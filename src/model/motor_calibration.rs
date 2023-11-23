@@ -1,18 +1,18 @@
 const COUNT_MOTOR_LR_POWER_RATIOS: usize = 12;
 static MOTOR_LR_POWER_RATIOS: [(u8, f32); COUNT_MOTOR_LR_POWER_RATIOS] = [
     // (targer_power_level: i32, left_right_turn_ratio: f32)
-    (70,	1.00467),
-    (80,	0.98837),
-    (90,	1.00244),
-    (100,	0.99218),
-    (110,	0.98535),
-    (120,	1.00406),
-    (140,	1.00608),
-    (160,	0.99909),
-    (180,	0.97128),
-    (200,	0.9729),
-    (225,	0.95067),
-    (255,	0.87813),
+    (70, 1.00467),
+    (80, 0.98837),
+    (90, 1.00244),
+    (100, 0.99218),
+    (110, 0.98535),
+    (120, 1.00406),
+    (140, 1.00608),
+    (160, 0.99909),
+    (180, 0.97128),
+    (200, 0.9729),
+    (225, 0.95067),
+    (255, 0.87813),
 ];
 
 /// For a nominal power level, returns the calibrated (left, right) motor power levels

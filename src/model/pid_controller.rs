@@ -1,4 +1,5 @@
 use micromath::F32Ext;
+use ufmt::{uDebug, uDisplay, uWrite, uwrite};
 
 use crate::println;
 
@@ -76,5 +77,32 @@ impl PIDController {
         self.integral = 0.0;
         self.last_error = 0.0;
         self.last_time = start_time;
+    }
+}
+
+impl uDebug for PIDController {
+    fn fmt<W>(&self, f: &mut ufmt::Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        uwrite!(
+            f,
+            "PIDController<kp: {}, ki: {}, kd: {}, setpoint: {}>",
+            self.kp,
+            self.ki,
+            self.kd,
+            self.setpoint,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl uDisplay for PIDController {
+    fn fmt<W>(&self, f: &mut ufmt::Formatter<'_, W>) -> Result<(), W::Error>
+    where
+        W: uWrite + ?Sized,
+    {
+        uDebug::fmt(self, f)
     }
 }

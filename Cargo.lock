@@ -27,9 +27,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84b1e02e846628f283a1c103ef5946224a07092761e4fb91fb93ab794d0b0ada"
+checksum = "9caff6ab631ca48909f0b505bd115a7fee718d1281c8f2995a74cfd316b939ae"
 dependencies = [
  "avr-device-macros",
  "bare-metal",
@@ -39,9 +39,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device-macros"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "817bb402f7da3b9e586d8f2db8a8f3f7d8fdc1562aaa4238a5ed495ebd19fc8f"
+checksum = "0d4a6f123cc0e37b3d1099e5fc9a4a2bb7c0475a6c32f2e263d2e8849b9ae8fe"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -65,17 +65,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "avr-progmem"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e93a9dd7da8f4eb57c912367e337687e06a8db6452d8c89eeb9eff1e0d2ba2d"
-dependencies = [
- "cfg-if 1.0.0",
- "derivative",
- "ufmt",
-]
-
-[[package]]
 name = "bare-metal"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -92,17 +81,6 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
-
-[[package]]
-name = "derivative"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "embedded-hal"
@@ -187,13 +165,11 @@ dependencies = [
  "arduino-hal",
  "avr-device",
  "avr-device-macros",
- "avr-progmem",
  "embedded-hal",
  "micromath",
  "mpu6050",
  "nb 1.1.0",
  "panic-halt",
- "udatatable",
  "ufmt",
 ]
 
@@ -212,16 +188,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "udatatable"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabf8d182c4d7b01bee6a4e1f834e771526c6d6b24ce38d9b496c36fd3b2d3b9"
-dependencies = [
- "panic-halt",
- "ufmt",
 ]
 
 [[package]]
