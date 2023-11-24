@@ -1,4 +1,4 @@
-use arduino_hal::{delay_ms, Delay, I2c};
+use arduino_hal::{delay_ms, I2c};
 use micromath::F32Ext;
 use ufmt::{uDebug, uDisplay, uWrite, uwrite, Formatter};
 
@@ -21,7 +21,6 @@ use embedded_hal::{
     digital::v2::{InputPin, OutputPin},
     PwmPin,
 };
-use mpu6050::{Mpu6050, Mpu6050Error};
 
 const WHEEL_CIRCUMFERENCE: f32 = 214.0; // millimeters
 const WHEEL_BASE: f32 = 132.5; // millimeters
@@ -70,6 +69,7 @@ pub struct Robot<
     heading_calculator: HeadingCalculator,
 }
 
+
 #[allow(dead_code)]
 impl<
         INA1: OutputPin,
@@ -100,28 +100,17 @@ impl<
             let new_bits = r.bits() | 0b00001100; // INT2 and INT3
             w.bits(new_bits)
         });
-
-        let mut imu = Mpu6050::new(i2c);
-        let mut delay = Delay::new();
-        match imu.init(&mut delay) {
-            Ok(()) => println!("MPU6050 initialized"),
-            Err(Mpu6050Error::InvalidChipId(id)) => {
-                println!("Error initializing MPU6050: InvalidChipId = {}", id)
-            }
-            Err(Mpu6050Error::I2c(_error)) => {
-                println!("Error initializing MPU6050: I2cError ")
-            }
-        }
-        if let Err(_error) = imu.set_gyro_range(mpu6050::device::GyroRange::D250) {
-            println!("Error setting gyro range");
-        }
         // create self structure
+        let heading_calculator = HeadingCalculator::new(i2c);
+
+        println!("Robot initialized");
         Self {
             motors: MotorController::new(ina1_pin, ina2_pin, inb1_pin, inb2_pin, ena_pin, enb_pin),
             button: button_pin,
             button_pressed: false,
-            heading_calculator: HeadingCalculator::new(imu),
+            heading_calculator,
         }
+        
     }
 
     /// This function is called in the main loop to allow the robot to handle state updates
@@ -240,8 +229,6 @@ impl<
         {
             self.handle_loop();
             if millis() - last_checkin_time > CONTROL_LOOP_PERIOD
-                && self.get_left_wheel_counter() > 5
-                && self.get_right_wheel_counter() > 5
             {
                 let current_time = millis();
                 let left_ticks = self.get_left_wheel_counter();
@@ -257,13 +244,14 @@ impl<
                     * (delta_right_ticks as f32 - delta_left_ticks as f32)
                     / WHEEL_BASE;
                 heading += heading_change;
+                let current_heading = self.heading_calculator.heading();
 
                 // get control signal from PID controller
-                let control_signal = controller.update(heading, current_time);
+                let control_signal = controller.update(current_heading, current_time);
 
                 // set motor power. positive control signal means turn left, a negative control signal means turn right
                 let adjustment = control_signal.abs() as u8;
-                if control_signal > 0.0 {
+                if control_signal.is_sign_positive() {
                     self.motors.set_duty(
                         left_target_power - adjustment / 2,
                         right_target_power + adjustment,
@@ -284,7 +272,7 @@ impl<
                         distance,
                         heading_change,
                         heading,
-                        self.heading_calculator.heading(),
+                        current_heading,
                         control_signal,
                         controller.integral,
                         self.motors.get_duty_a(),

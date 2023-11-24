@@ -53,7 +53,6 @@ fn main() -> ! {
         &dp.EXINT.eimsk,
         i2c, // takes ownership of i2c
     );
-    println!("Robot initialized");
     let mut led = pins.d13.into_output();
     unsafe { avr_device::interrupt::enable() };
     println!("Interrupts enabled");

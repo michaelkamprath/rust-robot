@@ -25,6 +25,7 @@ mpu6050 = { git = "https://github.com/michaelkamprath/mpu6050.git", branch = "mi
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
 panic = "abort"
+debug = false
 # lto = "thin"
 opt-level = "s"
 

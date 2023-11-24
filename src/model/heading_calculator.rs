@@ -1,6 +1,9 @@
-use crate::system::millis::millis;
-use arduino_hal::I2c;
-use mpu6050::Mpu6050;
+use crate::{
+    system::millis::millis,
+    println,
+};
+use arduino_hal::{Delay, I2c};
+use mpu6050::{Mpu6050, Mpu6050Error};
 
 // CALIBRATION
 // ....................	XAccel			YAccel				ZAccel			XGyro			YGyro			ZGyro
@@ -15,8 +18,59 @@ pub struct HeadingCalculator {
     last_update_time: u32,
 }
 
-impl HeadingCalculator {
-    pub fn new(mpu6050: Mpu6050<I2c>) -> Self {
+const MPU6050_RA_XG_OFFS_USRH: u8 = 0x13;
+const MPU6050_RA_XG_OFFS_USRL: u8 = 0x14;
+const MPU6050_RA_YG_OFFS_USRH: u8 = 0x15;
+const MPU6050_RA_YG_OFFS_USRL: u8 = 0x16;
+const MPU6050_RA_ZG_OFFS_USRH: u8 = 0x17;
+const MPU6050_RA_ZG_OFFS_USRL: u8 = 0x18;
+
+const MPU6050_GYRO_X_OFFSET: i16 = 82;
+const MPU6050_GYRO_Y_OFFSET: i16 = 31;
+const MPU6050_GYRO_Z_OFFSET: i16 = -49;
+
+
+impl HeadingCalculator  {
+    pub fn new(i2c: I2c) -> Self {
+        let mut mpu6050 = Mpu6050::new(i2c);
+        let mut delay = Delay::new();
+        match mpu6050.init(&mut delay) {
+            Ok(()) => println!("MPU6050 initialized"),
+            Err(Mpu6050Error::InvalidChipId(id)) => {
+                println!("Error initializing MPU6050: InvalidChipId = {}", id)
+            }
+            Err(Mpu6050Error::I2c(_error)) => {
+                println!("Error initializing MPU6050: I2cError ")
+            }
+        }
+        if let Err(_error) = mpu6050.set_gyro_range(mpu6050::device::GyroRange::D250) {
+            println!("Error setting gyro range");
+        }
+
+        // set the mpu6050 offsets. These were determined by running the calibration code in the
+        // Arduino C++ library and then converting the results to Rust. The calibration code is here:
+        //      https://github.com/ElectronicCats/mpu6050/blob/master/examples/IMU_Zero/IMU_Zero.ino
+        //
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_XG_OFFS_USRH, (MPU6050_GYRO_X_OFFSET >> 8) as u8) {
+            // todo: handle error
+        }
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_XG_OFFS_USRL, (MPU6050_GYRO_X_OFFSET & 0xFF) as u8) {
+           // todo: handle error
+        }
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_YG_OFFS_USRH, (MPU6050_GYRO_Y_OFFSET >> 8) as u8) {
+            // todo: handle error
+        }
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_YG_OFFS_USRL, (MPU6050_GYRO_Y_OFFSET & 0xFF) as u8) {
+            // todo: handle error
+        }
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_ZG_OFFS_USRH, (MPU6050_GYRO_Z_OFFSET >> 8) as u8) {
+            // todo: handle error
+        }
+        if let Err(_e) = mpu6050.write_byte(MPU6050_RA_ZG_OFFS_USRL, (MPU6050_GYRO_Z_OFFSET & 0xFF) as u8) {
+           // todo: handle error
+        }
+        println!("Gyro offsets set");
+
         Self {
             heading: 0.0,
             mpu6050,
@@ -31,6 +85,7 @@ impl HeadingCalculator {
         self.last_update_time = millis();
     }
 
+    /// updates the heading value with the latest gyro measurement, then returns the current heading in degrees
     pub fn update(&mut self) -> f32 {
         let now = millis();
         let delta_time = now - self.last_update_time;
@@ -46,6 +101,7 @@ impl HeadingCalculator {
         self.heading
     }
 
+    /// returns the current heading in degrees
     pub fn heading(&mut self) -> f32 {
         self.update()
     }
